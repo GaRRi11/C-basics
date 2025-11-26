@@ -3,6 +3,7 @@
 Every variable has a value and a memory address.
 
 int x = 10;   // value
+
 &x;           // memory location of x
 
 ## What Pointers Really Are
@@ -10,6 +11,7 @@ int x = 10;   // value
 A pointer stores the memory address of another variable.
 
 int x = 10;
+
 int *p = &x; 
 
 
@@ -22,11 +24,29 @@ C knows int is 4 bytes, so *p reads 4 bytes starting at that address → 10.
 Rule:
 Pointer type must match the variable type it points to, otherwise C will read the wrong number of bytes.
 
+USAGE EXAMPLE:
+
+void change(int x) {
+
+    x = 99; // DOES NOT affect original
+    
+}
+
+void change(int *p) {
+
+    *p = 99; // changes original
+    
+}
+
+
+
+
 ## Pointer Type Defines Read Size
 
 The pointer's type tells C how many bytes to read.
 
 int x = 10;
+
 uint8_t *p = &x;   // unsafe
 
 
@@ -37,6 +57,7 @@ uint8_t* reads only 1 byte from the 4-byte integer — wrong unless intentionall
 An array name decays to the address of its first element.
 
 uint8_t array[4] = {1, 2, 3, 4};
+
 uint8_t *p = array; 
 
 
@@ -47,6 +68,7 @@ p = &array[0]
 Pointer arithmetic:
 
 *p       // 1
+
 *(p + 2) // 3 (third element, 2 bytes forward)
 
 
@@ -57,15 +79,18 @@ Because uint8_t is 1 byte, pointer moves by 1 byte each step.
 Adding 1 to a pointer moves by the size of the pointed type.
 
 uint32_t *p;
+
 p + 1;  // moves 4 bytes forward
 
 uint8_t *b;
+
 b + 1;  // moves 1 byte forward
 
 
 Example:
 
 uint32_t arr[2] = {100, 200};
+
 uint32_t *p = arr;
 
 *(p + 1);  // 200
@@ -75,8 +100,11 @@ uint32_t *p = arr;
 A struct is a group of variables placed sequentially in memory.
 
 struct Packet {
+
     uint8_t type;      // 1 byte
+    
     uint16_t length;   // 2 bytes
+    
 };
 
 
@@ -101,6 +129,7 @@ htons() → 16-bit
 htonl() → 32-bit
 
 uint16_t port = 80;
+
 uint16_t net_port = htons(port);
 
 ## Walking Through a Packet
