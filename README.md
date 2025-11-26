@@ -66,6 +66,17 @@ graphs
 
 
 
+pointer[index] = *(pointer + index)
+
+This means:
+
+pb[0] → the byte at address pb
+
+pb[1] → the byte at address pb + 1
+
+pb[2] → the byte at address pb + 2
+
+
 ## Pointer Type Defines Read Size
 
 The pointer's type tells C how many bytes to read.
@@ -182,3 +193,12 @@ h->length → 2 bytes at offset 2
 This is walking the packet by reading its structured fields. 
 
 
+NOTES:
+
+1.addresses must be printed like this 
+
+
+    printf("%p\n", (void*)&x); // address
+    printf("%p\n", (void*)p);  // same address
+
+    
