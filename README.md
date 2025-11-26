@@ -26,6 +26,8 @@ Pointer type must match the variable type it points to, otherwise C will read th
 
 USAGE EXAMPLE:
 
+Pointers let you access/modify memory indirectly:
+
 void change(int x) {
 
     x = 99; // DOES NOT affect original
@@ -38,6 +40,29 @@ void change(int *p) {
     
 }
 
+Pointers allow dynamic memory (malloc):
+
+int *arr = malloc(100 * sizeof(int));
+
+Pointers let you walk through arrays efficiently
+
+uint8_t *p = buf;
+
+p++; // move to next byte
+
+Pointers allow casting raw bytes into structs (packet parsing)
+
+struct Header *h = (struct Header*)buf;
+
+Some data structures require pointers
+
+linked lists
+
+trees
+
+hash tables
+
+graphs
 
 
 
