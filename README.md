@@ -128,7 +128,3 @@ h->length → 2 bytes at offset 2
 This is walking the packet by reading its structured fields. 
 
 
-<pre>  .section .bss
-.comm u,4,4
-  
-</pre>
