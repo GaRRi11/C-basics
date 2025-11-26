@@ -1,1 +1,134 @@
-# C-basics
+## Variables Live in Memory
+
+Every variable has a value and a memory address.
+
+int x = 10;   // value
+&x;           // memory location of x
+
+## What Pointers Really Are
+
+A pointer stores the memory address of another variable.
+
+int x = 10;
+int *p = &x; 
+
+
+p is the address (example: 0x83498A).
+
+*p is the value living at that address.
+
+C knows int is 4 bytes, so *p reads 4 bytes starting at that address → 10.
+
+Rule:
+Pointer type must match the variable type it points to, otherwise C will read the wrong number of bytes.
+
+## Pointer Type Defines Read Size
+
+The pointer's type tells C how many bytes to read.
+
+int x = 10;
+uint8_t *p = &x;   // unsafe
+
+
+uint8_t* reads only 1 byte from the 4-byte integer — wrong unless intentionally reading raw bytes.
+
+## How Pointers Work With Arrays
+
+An array name decays to the address of its first element.
+
+uint8_t array[4] = {1, 2, 3, 4};
+uint8_t *p = array; 
+
+
+p = &array[0]
+
+*p reads the first element → 1
+
+Pointer arithmetic:
+
+*p       // 1
+*(p + 2) // 3 (third element, 2 bytes forward)
+
+
+Because uint8_t is 1 byte, pointer moves by 1 byte each step.
+
+## Pointer Arithmetic Moves in Type-Sized Steps
+
+Adding 1 to a pointer moves by the size of the pointed type.
+
+uint32_t *p;
+p + 1;  // moves 4 bytes forward
+
+uint8_t *b;
+b + 1;  // moves 1 byte forward
+
+
+Example:
+
+uint32_t arr[2] = {100, 200};
+uint32_t *p = arr;
+
+*(p + 1);  // 200
+
+## Struct Memory Layout
+
+A struct is a group of variables placed sequentially in memory.
+
+struct Packet {
+    uint8_t type;      // 1 byte
+    uint16_t length;   // 2 bytes
+};
+
+
+Fields are laid out next to each other.
+
+Padding bytes may be inserted between fields for alignment.
+
+## sizeof()
+
+sizeof tells you exactly how many bytes something uses.
+
+sizeof(int);        // usually 4
+
+## Network Byte Order
+
+Network byte order is always big-endian.
+
+Multi-byte values must be converted:
+
+htons() → 16-bit
+
+htonl() → 32-bit
+
+uint16_t port = 80;
+uint16_t net_port = htons(port);
+
+## Walking Through a Packet
+
+Interpret raw network bytes using a struct pointer.
+
+Raw data:
+
+uint8_t buf[1500];
+
+
+Cast to struct:
+
+struct Header *h = (struct Header*)buf;
+
+
+Access fields:
+
+h->version → byte at offset 0
+
+h->type → byte at offset 1
+
+h->length → 2 bytes at offset 2
+
+This is walking the packet by reading its structured fields. 
+
+
+<pre>  .section .bss
+.comm u,4,4
+  
+</pre>
