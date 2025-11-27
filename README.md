@@ -203,3 +203,23 @@ NOTES:
 
     
 2.Endianness is how multi-byte numbers are stored in memory. MSB (most significant byte) contributes the most, LSB the least. Hex notation (e.g., 0x12345678) is always MSB→LSB and does not reflect memory layout. Big-endian stores MSB at the lowest address, little-endian stores LSB at the lowest address. Pointers read memory byte by byte, so the first byte depends on endianness. Networking always uses big-endian, so conversions (htons/htonl) may be needed. Value stays the same; only byte order changes.
+
+3. FD is an int — correct. A file descriptor is just a small integer that the kernel uses to track open resources. Standard FDs when a process starts:
+
+| FD | Name   | Description     |
+| -- | ------ | --------------- |
+| 0  | STDIN  | standard input  |
+| 1  | STDOUT | standard output |
+| 2  | STDERR | standard error  |
+
+These are automatically opened and managed by the kernel for every process. ✅
+
+System calls for I/O
+
+write(int fd, const void *buf, size_t count) → writes count bytes from buf to the file/socket/resource identified by fd.
+
+Example: fd = 1 → stdout (process outputs data).
+
+read(int fd, void *buf, size_t count) → reads up to count bytes into buf from the file/socket/resource identified by fd.
+
+Example: fd = 0 → stdin (process reads input).
