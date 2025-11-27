@@ -202,3 +202,4 @@ NOTES:
     printf("%p\n", (void*)p);  // same address
 
     
+2.Endianness is how multi-byte numbers are stored in memory. MSB (most significant byte) contributes the most, LSB the least. Hex notation (e.g., 0x12345678) is always MSB→LSB and does not reflect memory layout. Big-endian stores MSB at the lowest address, little-endian stores LSB at the lowest address. Pointers read memory byte by byte, so the first byte depends on endianness. Networking always uses big-endian, so conversions (htons/htonl) may be needed. Value stays the same; only byte order changes.
