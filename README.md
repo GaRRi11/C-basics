@@ -223,3 +223,113 @@ Example: fd = 1 → stdout (process outputs data).
 read(int fd, void *buf, size_t count) → reads up to count bytes into buf from the file/socket/resource identified by fd.
 
 Example: fd = 0 → stdin (process reads input).
+
+4. Sockets 
+
+What are sockets?
+
+Sockets are used to send and receive data between processes (locally) or over a network (between devices).
+
+Sockets allow TCP and UDP.
+
+Other protocols are built on top of these two.
+
+A socket itself is a file descriptor, so we can read(), write(), and close() it like a normal FD.
+
+Creating a Socket
+
+Template:
+
+socket(domain, type, protocol)
+
+
+Example:
+
+int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+
+Parameters
+
+domain → AF_INET for IPv4, AF_INET6 for IPv6, AF_UNIX for local communication
+
+type → SOCK_STREAM for TCP, SOCK_DGRAM for UDP
+
+protocol → 0 (kernel chooses default protocol for that type)
+
+socket() returns a file descriptor (>= 0) or -1 on error.
+
+Creating a TCP Client
+
+To connect to a server we need to prepare a sockaddr_in structure.
+
+Here we save IP + PORT for IPv4 format.
+
+Steps
+
+1. Create struct
+   
+struct sockaddr_in addr;
+
+3. Set address family
+   
+addr.sin_family = AF_INET;
+
+
+This makes sockaddr_in a valid IPv4 address struct.
+
+3. Set destination port
+   
+addr.sin_port = htons(8080);
+
+
+We convert the port to network byte order (big-endian).
+
+4. Convert destination IP to 32-bit binary
+   
+inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
+
+
+This converts the loopback IP from string to a 32-bit IPv4 address.
+
+5. Connect
+   
+connect(sock, (struct sockaddr*)&addr, sizeof(addr));
+
+
+sock → the local socket FD
+
+addr → server IP + port
+
+sizeof(addr) → lets OS know the structure size
+
+If connection succeeds, the TCP 3-way handshake happens:
+
+SYN →
+← SYN + ACK
+ACK →
+
+Sending Data
+
+char msg[] = "hello server";
+
+
+Create message we want to send to server.
+
+send(sock, msg, strlen(msg), 0);
+
+
+sock → the connected socket
+
+msg → pointer to bytes
+
+strlen(msg) → number of bytes (11, without '\0')
+
+0 → no special flags
+
+Closing
+
+close(sock);
+
+
+Closes the connection.
+
+This sends FIN packet to the server.
