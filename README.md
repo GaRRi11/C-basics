@@ -333,3 +333,205 @@ close(sock);
 Closes the connection.
 
 This sends FIN packet to the server.
+
+
+5. RAW PACKET
+
+✅ Raw Packets – Craft ARP and Send to LAN
+
+Choosing interface
+
+const char *iface = "eth0";   // specify interface
+
+✅ Why AF_PACKET + SOCK_RAW
+
+When crafting raw packets where we want to manually assign src MAC, src IP, and all other fields, we must use:
+
+AF_PACKET, SOCK_RAW
+
+
+If we don't, the kernel will override IP and MAC values.
+
+✅ Creating raw socket
+
+int sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ARP));
+
+
+AF_PACKET: allows sending full Ethernet frames
+
+SOCK_RAW: gives raw access to link-layer
+
+htons(ETH_P_ARP): tell kernel we are interested in ARP protocol (protocol filter)
+
+ETH_P_ALL can be used to capture or send all protocols
+
+✅ Interface index
+
+C knows interfaces by index (integer IDs):
+
+eth0 → 2
+
+wlan0 → 3
+
+
+Use SIOCGIFINDEX ioctl to get index from interface name.
+
+✅ Crafting ARP packet fields
+
+Source MAC
+
+unsigned char src_mac[6];
+
+
+Store the source MAC for the packet (can be random 6 bytes).
+
+Source IP
+
+uint32_t src_ip_netorder;
+
+
+Store source IPv4 in network byte order.
+
+Target IP
+
+uint32_t target_ip_netorder;
+
+✅ Ethernet + ARP frame layout
+
+Ethernet header: 14 bytes
+
+- dst MAC (6)
+  
+- src MAC (6)
+  
+- ethertype (2) -> 0x0806 for ARP
+
+ARP payload (request): 28 bytes
+
+- htype (2) = 1
+- ptype (2) = 0x0800
+- hlen (1) = 6
+- plen (1) = 4
+- opcode (2) = 1 (request)
+- sender MAC (6)
+- sender IP (4)
+- target MAC (6) = zeros
+- target IP (4)
+
+Total = 42 bytes
+
+✅ Frame buffer
+
+unsigned char frame[42];
+
+
+Buffer that holds full Ethernet frame.
+
+All indexes refer to offsets in this array.
+
+✅ Destination MAC
+
+unsigned char dest_mac[6] = {ff:ff:ff:ff:ff:ff};
+
+
+Broadcast to forward packet to everyone in LAN.
+
+✅ EtherType
+
+frame[12] = 0x08;  
+frame[13] = 0x06;
+
+✅ ARP header fields
+
+frame[14] = 0x00; frame[15] = 0x01;    // HTYPE = 1 (Ethernet)
+frame[16] = 0x08; frame[17] = 0x00;    // PTYPE = 0x0800 (IPv4)
+frame[18] = 6;                         // HLEN = 6
+frame[19] = 4;                         // PLEN = 4
+frame[20] = 0x00; frame[21] = 0x01;    // opcode = 1 (request)
+
+memcpy(frame + 22, src_mac, 6);        // sender MAC
+memcpy(frame + 28, &src_ip_netorder, 4);  // sender IP
+memset(frame + 32, 0x00, 6);           // target MAC = unknown
+memcpy(frame + 38, &target_ip_netorder, 4); // target IP
+
+✅ sockaddr_ll setup
+
+struct sockaddr_ll socket_address;
+
+
+Contains:
+
+family = AF_PACKET
+
+interface index
+
+hardware address length = 6
+
+destination MAC address
+
+✅ Sending the packet
+
+ssize_t bytes_sent = sendto(sock, frame, sizeof(frame), 0,
+                (struct sockaddr*)&socket_address,
+                sizeof(socket_address));
+
+
+If bytes_sent > 0 → successfully sent.
+
+✅ Closing
+
+close(sock);
+
+✅ Sniff all packets in LAN
+
+Create sniffer socket
+
+int sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+
+
+AF_PACKET → capture raw L2 frames
+
+SOCK_RAW → get entire Ethernet frame (header + payload)
+
+ETH_P_ALL → capture every protocol (ARP, IPv4, IPv6, etc)
+
+Bind to interface
+
+int ifindex = ifr.ifr_ifindex;
+
+
+Bind socket to correct interface index.
+
+Sniff loop
+while (1) {
+    recvfrom(sock, buffer, sizeof(buffer), 0, NULL, NULL);
+}
+
+
+Parse offsets in buffer and print in human-readable form.
+
+✅ Changes if using IPv6 instead of IPv4
+
+Sender (raw crafting)
+
+EtherType = 0x86DD
+
+No ARP → use ICMPv6 ND
+
+16-byte IPs
+
+IPv6 header = 40 bytes
+
+Must compute ICMPv6 checksum
+
+Address conversion uses AF_INET6
+
+Sniffer
+
+Detect IPv6 using EtherType 0x86DD
+
+Parse 40-byte header
+
+IPs are 16 bytes printed via inet_ntop(AF_INET6)
+
+No ARP → instead ICMPv6 ND
