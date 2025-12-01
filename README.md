@@ -535,3 +535,241 @@ Parse 40-byte header
 IPs are 16 bytes printed via inet_ntop(AF_INET6)
 
 No ARP → instead ICMPv6 ND
+
+
+
+
+
+
+
+---------------------------------------------------------------- C NETWORKING
+
+UNIX
+
+chapter 3 - 7 - 14 - 17 - 27 - 28 - 29
+
+PF_PACKET (AF_PACKET) — Kernel will NOT override anything
+
+af_packet not overriden just fails if not specified l2 and af_intet overriden always
+
+
+
+ROADMAP
+
+protocols - rules of networking between devices. protocol can have different level of rules, like ethenet cable voltage(low level) or how JPEG image gets formatted (high level)
+
+OSI LAYER MODEL
+
+osi defines this levels clearly, every upper layer is built on lower level layer and uses it to operate
+
+  7. APPLICATION - APPLICATIONS WITH UI, this layer uses all 6 lower layers.
+
+  6. PRESENTATION - at this level, data structure is defined, data encoding, serialization, encryption.
+
+  5. SESSION LAYER - uses transport layer and adds methods to establish, suspend, checkpoint, resume and terminate dialogs.
+
+  4 TRANSPORT - TCP/UDP methods to deliver data between hosts, this methods split up data, recombining it, ensuring it arrived, etc...
+
+  3 NETWORK - transmit packets in different networks, this layer is used by internet protocol.
+
+  2 DATA LINK - It deals with protocols for directly communicating between two nodes. It defines how a direct message between nodes starts and ends (framing), error detection and correction, and flow control. 802.11(WIFI) or Ethernet frame(WIRED)
+
+  1 PHYSICAL - ethernet cable voltage, wifi radio frequency. light flashes over an optic fiber. RADIO WAVES(WIFI) or SIGNALS(WIRED)
+
+
+each upper layer has its own message only and has info about what to send to next lower layer, on each layer more info is added to data about the next hop. thats called encapsulation. 
+
+when packet reaches dest then decapsulation starts. each layer reads and removes its header.
+
+
+TCP OR UDP always required for connection in intrnet. because IP required Layer 4 transport layer.
+
+transmitting http with tcp is handled by os.
+
+
+
+TCP/IP LAYER MODEL
+
+  4. PROCCESS/APPLICATION -  The process/application layer is where protocols such as HTTP, SMTP, and FTP are implemented.
+
+  3. HOST TO HOST - TCP/UDP
+
+  2. INTERNET - This layer deals with the concerns of addressing packetsand routing them over multiple
+
+  1 NETWORK ACCESS - ethernet cable voltage, wifi radio frequency. light flashes over an optic fiber. RADIO WAVES(WIFI) or SIGNALS(WIRED)
+
+
+
+SOCKET INTRODUCTION - 91
+
+
+
+ Most socket functions require a pointer to a socket address structure as an argument.
+ Each supported protocol suite defines its own socket address structure. The names of
+ these structures begin with sockaddr_ and end with a unique suffix for each protocol
+ suite.
+
+
+sockaddr_in - IPv4 socket address structure.
+
+struct in_addr {
+    in_addr_t s_addr;
+};
+
+ in_addr represents 32-bit IPv4 addr. s_addr: A 32-bit integer storing the IPv4 address in network byte order (big-endian). this represents just an IPv4 addr in big-endian format. not port number or anything else.
+
+
+sockaddr_in. WHEN SENDING THIS STRUCTURE IN NETWORK ONLY IP ADDR AND PORT FIELDS ARE CONVERTED TO BIG-ENDIAN AND SENT OTHER FIELDS STAY HOST LOCAL NOT SENT IN NETWORK.
+
+struct sockaddr_in {
+    uint8_t sin_len;       // length (BSD only) Not all vendors support
+    sa_family_t sin_family;// AF_INET
+    in_port_t sin_port;    // TCP/UDP port in network byte order
+    struct in_addr sin_addr;// IPv4 address
+    char sin_zero[8];      // padding
+};
+
+
+sockaddr_in represents full full IPv4 socket address, including:
+
+sin_len: As a developer, you usually don’t need to touch sin_len unless you’re doing advanced things like routing sockets.
+IPv6 Note: IPv6 implementations often define SIN6_LEN if the length field exists.
+
+IP address (sin_addr)
+
+Port number (sin_port)
+
+Address family (sin_family)
+
+Used in network functions: bind(), connect(), sendto(), recvfrom().
+
+LAYER 4 SOCKET: socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)
+
+LAYER 3 SOCKET: socket(AF_INET, SOCK_RAW, IPPROTO_RAW)
+
+LAYER 2 SOCKET: socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))
+
+
+
+POSIX only requires three members in struct sockaddr_in:
+
+sin_family – Address family (e.g., AF_INET for IPv4)
+
+sin_port – 16-bit TCP/UDP port number (network byte order)
+
+sin_addr – 32-bit IPv4 address (network byte order)
+
+
+
+sin_zero padding
+
+Almost all implementations include sin_zero[8].
+
+Purpose:
+
+Ensures struct sockaddr_in is at least 16 bytes (matches struct sockaddr size).
+
+Provides memory alignment and compatibility with older code that expects 16-byte socket addresses.
+
+
+POSIX defines minimum requirements for socket programming.
+
+POSIX datatypes for socket members:
+
+| Member            | POSIX Type    | Requirements / Notes                                                      |
+| ----------------- | ------------- | ------------------------------------------------------------------------- |
+| `sin_family`      | `sa_family_t` | Any unsigned integer. Usually 8 bits if `sin_len` exists, 16 bits if not. |
+| `sin_port`        | `in_port_t`   | Unsigned integer of **at least 16 bits** (usually `uint16_t`).            |
+| `sin_addr.s_addr` | `in_addr_t`   | Unsigned integer of **at least 32 bits** (usually `uint32_t`).            |
+
+
+Other related POSIX datatypes
+
+| Type        | Description                  | Header           |
+| ----------- | ---------------------------- | ---------------- |
+| `int8_t`    | Signed 8-bit integer         | `<sys/types.h>`  |
+| `uint8_t`   | Unsigned 8-bit integer       | `<sys/types.h>`  |
+| `int16_t`   | Signed 16-bit integer        | `<sys/types.h>`  |
+| `uint16_t`  | Unsigned 16-bit integer      | `<sys/types.h>`  |
+| `int32_t`   | Signed 32-bit integer        | `<sys/types.h>`  |
+| `uint32_t`  | Unsigned 32-bit integer      | `<sys/types.h>`  |
+| `socklen_t` | Length of a socket structure | `<sys/socket.h>` |
+
+
+
+
+sa_family_t → Identifies the address family.
+
+For IPv4: AF_INET
+
+For IPv6: AF_INET6
+
+
+socklen_t → Represents the length of a socket address structure (used in bind(), accept(), etc.).
+
+Usually a 32-bit unsigned integer.
+
+
+
+sin_addr(IPv4 addr) and sin_port(port  number) must be stored in big-endian order before sent.
+
+convert from host to big-endian - htons(), htonl()
+
+convert big-endian to host - ntohs(), ntohl()
+
+
+
+serv.sin_addr → accesses the in_addr structure
+
+serv.sin_addr.s_addr → accesses the 32-bit integer storing the IPv4 address
+
+
+
+Modern systems define in_addr as a structure with a single in_addr_t member.
+
+
+different protocol families (IPv4,IPv6,local) have different structures struct_sockaddr_in, struct_sockaddr_in6, struct_sockaddr_un.socket functions which are bind() connect() sendto() need to work with any protocol family. because of that generic socket address is used, named struct sockaddr.
+
+struct sockaddr {
+    uint8_t sa_len;       // BSD: length of the structure
+    sa_family_t sa_family; // Address family: AF_xxx
+    char sa_data[14];     // Protocol-specific address (port + IP for IPv4)
+};
+
+sa_family tells the kernel which protocol this address is for.
+
+sa_data is a placeholder for the actual protocol-specific data.
+
+For IPv4, it stores sin_port + part of sin_addr.
+
+For other protocols, it’s interpreted differently.
+
+The kernel receives a pointer to struct sockaddr.
+
+It checks sa_family to know which protocol-specific structure it should treat the pointer as.
+
+This is how one function can handle multiple protocol families.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
