@@ -600,6 +600,23 @@ TCP/IP LAYER MODEL
 
 
 
+
+LAN PROTOCOLS AND THEIR LAYERS:
+
+| Protocol                                        | Layer                                                                | Description                                                            |
+| ----------------------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| **ARP** (Address Resolution Protocol)           | **Layer 2 (Link Layer)**                                             | Resolves IPv4 → MAC. Runs directly over Ethernet. Not an IP protocol.  |
+| **NDP** (NS/NA, RS/RA, Redirect, etc. for IPv6) | **Layer 3 (Network Layer)**                                          | Neighbor Discovery Protocol. Built on **ICMPv6** which runs over IPv6. |
+| **DHCPv4**                                      | **Layer 7 (Application)** but carried by **UDP (Layer 4)** over IPv4 | Used for IPv4 address assignment.                                      |
+| **DHCPv6**                                      | **Layer 7 (Application)** carried by **UDP** over IPv6               | IPv6 version of DHCP.                                                  |
+| **ICMPv4**                                      | **Layer 3 (Network)** over IPv4                                      | Ping, errors, etc.                                                     |
+| **ICMPv6**                                      | **Layer 3 (Network)** over IPv6                                      | Required for IPv6. NDP uses this.                                      |
+
+
+
+
+
+
 SOCKET INTRODUCTION - 91
 
 
@@ -868,12 +885,423 @@ else if (client.ss_family == AF_INET6) {
 
 
 
+when process sends an address structure to the kernel
+
+functions which send address structure to the kernel like: process -> kernel
+
+bind()
+connect()
+sendto()
+
+
+in this case kernel needs to know WHERE the structure is (pointer) HOW MANY BYTES to copy from user space (size value)
+so we craft a struct and make kernel copy bytes in that struct that way.
+
+
+
+when the kernel returns an address structure to the process
+
+functions like: kernel → process.
+
+accept()
+
+recvfrom()
+
+getsockname()
+
+getpeername()
+
+These return address information (peer address, local address, sender address, etc).
+
+You tell the kernel how much memory space you are giving it (so it doesn't overflow).
+The kernel tells you how many bytes it actually wrote into the structure.
+
+“Here is a buffer with X bytes available — don’t overflow.”
+“I filled Y bytes (Y may be less than or equal to X).”
+
+
+
+Process -> kernel example:
+
+#include <stdio.h>
+#include <string.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+int main() {
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0); 
+    // Create IPv4 TCP socket
+
+    struct sockaddr_in serv;      
+    // Create IPv4 socket address structure
+
+    memset(&serv, 0, sizeof(serv));    
+    // Always clear the structure (good practice)
+
+    serv.sin_family = AF_INET;        
+    // AF_INET = IPv4
+
+    serv.sin_port = htons(8080);      
+    // Port in NETWORK byte order
+
+    inet_pton(AF_INET, "192.168.1.10", &serv.sin_addr);
+    // Convert text → binary IPv4 and store it
+
+    connect(sockfd, (struct sockaddr *)&serv, sizeof(serv));
+    // process -> kernel:
+    // 1) pass pointer to serv
+    // 2) pass size (value) sizeof(serv)
+    // kernel reads exactly sizeof(serv)
+
+    close(sockfd);
+}
+
+
+
+Kernel -> Process example:
+
+#include <stdio.h>
+#include <string.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+int main() {
+    int listenfd = socket(AF_INET6, SOCK_STREAM, 0);
+    // Create IPv6 TCP socket
+
+    struct sockaddr_in6 serv;
+    memset(&serv, 0, sizeof(serv));
+
+    serv.sin6_family = AF_INET6;
+    serv.sin6_port = htons(8080);
+    serv.sin6_addr = in6addr_any;
+
+    bind(listenfd, (struct sockaddr *)&serv, sizeof(serv));
+    listen(listenfd, 5);
+
+    struct sockaddr_storage client;  
+    // Large generic container for ANY address type
+
+    socklen_t len = sizeof(client);
+    // VALUE: "kernel, here is the max size you may write"
+
+    int connfd = accept(listenfd, (struct sockaddr *)&client, &len);
+    // kernel -> process:
+    // kernel fills 'client' with peer address
+    // kernel writes ACTUAL size into len (RESULT)
+
+    if (client.ss_family == AF_INET6) {
+        struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)&client;
+
+        char str[INET6_ADDRSTRLEN];
+        inet_ntop(AF_INET6, &ipv6->sin6_addr, str, sizeof(str));
+        printf("Client IPv6: %s\n", str);
+    }
+
+    close(connfd);
+    close(listenfd);
+}
+
+
+
+Byte Order
+
+IPv4, IPv6, Port -  those must be sent in big-endian.
+
+THIS METHODS USED FOR PORTS, FOR IP s inet_pton IS USED.
+
+little endian -> big endian (host->network)
+
+uint16_t htons(uint16_t x);   // 16-bit
+uint32_t htonl(uint32_t x);   // 32-bit
+
+big endian -> little endian (network->host)
+
+uint16_t ntohs(uint16_t x);   // 16-bit
+uint32_t ntohl(uint32_t x);   // 32-bit
+
+for example when passing the port number must be done like that:
+
+serv.sin_port = htons(8080);
+
+
+
+
+
+Byte Manipulation
+
+sockets contain bytes as data not strings. so socket fields must be treated as bytes. 
+
+examples:
+
+socket field must be zeros at start because they are binary, zero the structure:
+
+#include <stdio.h>
+#include <string.h>
+#include <arpa/inet.h>
+
+int main() {
+    struct sockaddr_in serv;
+
+    // Zero the structure
+    memset(&serv, 0, sizeof(serv));
+
+    serv.sin_family = AF_INET;
+    serv.sin_port   = htons(8080);
+    inet_pton(AF_INET, "192.168.1.100", &serv.sin_addr);
+
+    printf("Server ready: %s:%d\n",
+           "192.168.1.100", ntohs(serv.sin_port));
+    return 0;
+}
+
+
+
+
+assemble raw UDP packet buffer:
+
+#include <stdio.h>
+#include <string.h>
+#include <arpa/inet.h>
+#include <stdint.h>
+
+struct udp_header {
+    uint16_t src_port;
+    uint16_t dst_port;
+    uint16_t length;
+    uint16_t checksum;
+};
+
+int main() {
+    uint8_t packet[1500];
+    memset(packet, 0, sizeof(packet));   // clear packet
+
+    struct udp_header uh;
+    uh.src_port = htons(12345);
+    uh.dst_port = htons(80);
+    uh.length   = htons(sizeof(uh) + 5);
+    uh.checksum = 0;
+
+    // copy header into packet buffer
+    memcpy(packet, &uh, sizeof(uh));
+
+    // add payload “HELLO”
+    memcpy(packet + sizeof(uh), "HELLO", 5);
+
+    printf("UDP packet built: %zu bytes\n", sizeof(uh) + 5);
+}
+
+
+
+
+extract fields from received packet IPv4 header + 4-byte f:
+
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+
+struct ipv4_header {
+    uint8_t  version_ihl;
+    uint8_t  tos;
+    uint16_t length;
+    uint16_t id;
+    uint16_t flags_fragment;
+    uint8_t  ttl;
+    uint8_t  protocol;
+    uint16_t checksum;
+    uint32_t src;
+    uint32_t dst;
+};
+
+int main() {
+    uint8_t packet[64] = {0};
+
+    // pretend this was captured from the network
+    struct ipv4_header rx;
+    memcpy(&rx, packet, sizeof(rx));
+
+    printf("Source IP raw hex: %08X\n", ntohl(rx.src));
+}
 
 
 
 
 
 
+compare two IP/MAC :
+
+#include <stdio.h>
+#include <string.h>
+
+int main() {
+    uint8_t mac1[6] = {0x00,0x1A,0x2B,0x3C,0x4D,0x5E};
+    uint8_t mac2[6] = {0x00,0x1A,0x2B,0x3C,0x4D,0x5E};
+
+    if (memcmp(mac1, mac2, 6) == 0)
+        printf("MAC addresses match!\n");
+    else
+        printf("Different MAC.\n");
+}
+
+
+
+
+
+
+Expanding payload size by 4 bytes:
+
+#include <stdio.h>
+#include <string.h>
+
+int main() {
+    uint8_t packet[100] = {0};
+    size_t header_len = 20;
+    size_t payload_len = 10;
+
+    // packet contains header + payload
+
+    // shift payload forward to insert 4-byte option
+    memmove(packet + header_len + 4,
+            packet + header_len,
+            payload_len);
+
+    // insert the option bytes
+    memset(packet + header_len, 0xAA, 4);
+
+    printf("Shift complete.\n");
+    return 0;
+}
+
+
+
+
+
+
+
+
+
+inet_pton()
+
+IP addr String -> Network-byte-order THIS CONVERTS STRING TO BYTES + CONVERTS IT TO BIG-ENDIAN ORDER, READY TO SEND. ONLY FOR IP s.
+
+works both for IPv4 and IPv6 
+
+int inet_pton(int af, const char *src, void *dst);
+
+
+| Parameter | Meaning                                                                                                 |
+| --------- | ------------------------------------------------------------------------------------------------------- |
+| `af`      | Address family: `AF_INET` for IPv4, `AF_INET6` for IPv6                                                 |
+| `src`     | C string containing IP address ("192.168.1.1" or "fe80::1")                                             |
+| `dst`     | Pointer to memory where binary value is stored: `struct in_addr*` for IPv4, `struct in6_addr*` for IPv6 |
+
+
+
+| Return | Meaning                              |
+| ------ | ------------------------------------ |
+| **1**  | Successful conversion                |
+| **0**  | Invalid address string               |
+| **-1** | Invalid address family (`errno` set) |
+
+
+
+inet_ntop()
+
+Network-byte-order -> IP addr String 
+
+Supports IPv4 & IPv6.
+
+const char *inet_ntop(int af, const void *src, char *dst, socklen_t size);
+
+| Parameter | Meaning                                                               |
+| --------- | --------------------------------------------------------------------- |
+| `af`      | Address family (`AF_INET` / `AF_INET6`)                               |
+| `src`     | Pointer to binary address (`struct in_addr` or `struct in6_addr`)     |
+| `dst`     | Destination buffer for ASCII string                                   |
+| `size`    | Buffer size (`INET_ADDRSTRLEN` for IPv4, `INET6_ADDRSTRLEN` for IPv6) |
+
+
+| Return   | Meaning                                        |
+| -------- | ---------------------------------------------- |
+| **dst**  | Success, returns pointer to destination buffer |
+| **NULL** | Error (`errno` set)                            |
+
+
+
+
+
+
+
+sock_ntop
+
+
+inet_ntop has a problem, to extract ip from socket structure you need to know where exactly the ip is in socket structure. so extraction code becames protocol dependent. separate exctraction methods needed for different protocols. so sock_ntop is a solution of it.  it extracts like this IP:PORT protocol does not metter.
+
+Takes a generic struct sockaddr * pointer.
+
+Checks the sa_family field.
+
+Calls the appropriate function (inet_ntop) internally.
+
+Adds the port number (if it’s nonzero) to the string.
+
+Returns a presentation-format string like:
+
+192.168.1.10:8080
+[fe80::1]:8080
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+readn()
+
+Reads exactly n bytes, looping until either all bytes are read or an error/EOF occurs.
+
+Loops until all bytes are read.
+
+Handles EINTR (interrupted system calls).
+
+Returns bytes read, or -1 on error.
+
+
+
+writen()
+
+Writes exactly n bytes, looping if the kernel only writes a partial amount.
+
+Similar logic to readn.
+
+Ensures all bytes are written even if kernel buffer only accepts part.
+
+Handles interruptions.
+
+
+
+
+
+Buffered readline()
+
+Uses an internal buffer read_buf to reduce system calls:
+
+Reads a block of data at a time.
+
+Returns bytes one by one to the caller.
+
+Exposes internal buffer via readlinebuf(), so you can check leftover bytes.
+
+Faster than the naive one-byte-per-read version.
 
 
 
