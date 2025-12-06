@@ -1317,4 +1317,528 @@ Faster than the naive one-byte-per-read version.
 
 
 
+✅ SOL_SOCKET (Generic Options)
+
+✔ Applies to ALL socket types (TCP/UDP/raw)
+✔ Level: SOL_SOCKET
+
+1. SO_REUSEADDR
+
+Type: int • get/set
+Real-life scenarios:
+
+Restarting a server without waiting for TIME_WAIT
+
+Development (frequent restarts)
+
+LAN or WAN (doesn't matter)
+
+Example
+
+int yes = 1;
+setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+
+2. SO_REUSEPORT
+
+Type: int • get/set
+Real-life scenarios:
+
+Multi-worker servers (NGINX, DNS, QUIC)
+
+High-performance per-core load balancing
+
+Used in LAN + WAN
+
+Example
+
+int yes = 1;
+setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof(yes));
+
+3. SO_KEEPALIVE
+
+Type: int • get/set
+Real-life scenarios:
+
+Detect dead TCP connections (SSH, MQTT, mobile apps)
+
+Connections over unreliable WiFi/LAN
+
+Server-client long-lived connections
+
+4. SO_BROADCAST
+
+Type: int • get/set
+Real-life scenarios:
+
+LAN only (broadcast does not cross routers)
+
+Device discovery (printers, smart TVs, IoT)
+
+Game LAN lobby discovery
+
+DHCP client broadcasts
+
+Example
+
+int yes = 1;
+setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &yes, sizeof(yes));
+
+5. SO_DEBUG
+
+Type: int • get/set
+Real-life scenarios:
+
+Very rarely used, legacy debugging
+
+Kernel tracing of socket activity (developer diagnostics only)
+
+6. SO_DONTROUTE
+
+Type: int • get/set
+Real-life scenarios:
+
+Send packets only to directly connected LAN, bypass routing
+
+Used for debugging routing issues
+
+Rare in production
+
+7. SO_ERROR
+
+Type: int • get only
+Real-life scenarios:
+
+Check asynchronous connect() completion
+
+Detect connection failure states
+
+Socket-level troubleshooting
+
+Example
+
+int err;
+socklen_t len = sizeof(err);
+getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &len);
+
+8. SO_LINGER
+
+Type: struct linger • get/set
+
+Real-life scenarios:
+
+Force TCP immediate RST to quickly close
+
+Ensure all data is delivered before close()
+
+Useful for financial trading systems, VoIP, strict protocols
+
+Example
+
+struct linger ln = {1, 5}; // wait 5 sec
+setsockopt(fd, SOL_SOCKET, SO_LINGER, &ln, sizeof(ln));
+
+9. SO_OOBINLINE
+
+Type: int • get/set
+Real-life scenarios:
+
+Legacy TCP out-of-band data (rare)
+
+Not used in modern systems
+
+10. SO_RCVBUF / SO_SNDBUF
+
+Type: int • get/set
+
+Real-life scenarios:
+
+Increase buffers for high-throughput transfers (VPN, FTP)
+
+Decrease for low-latency apps (games, VoIP)
+
+Common in both LAN and WAN
+
+11. SO_RCVLOWAT / SO_SNDLOWAT
+
+Type: int • get/set
+Real-life scenarios:
+
+Rarely used
+
+Control minimum bytes before recv() returns
+
+Used for very specific real-time protocols
+
+12. SO_RCVTIMEO / SO_SNDTIMEO
+
+Type: struct timeval • get/set
+
+Real-life scenarios:
+
+recv() timeout for UDP-based protocols
+
+Real-time systems with strict deadlines
+
+Avoid blocking indefinitely
+
+13. SO_TYPE
+
+Type: int • get only
+
+Real-life scenarios:
+
+Libraries verifying socket type (TCP/UDP)
+
+Debugging
+
+Never needed in normal applications
+
+14. SO_USELOOPBACK
+
+Type: int • get/set
+
+Real-life scenarios:
+
+Rare, used for routing sockets
+
+Developer/testing only
+
+✅ IPPROTO_IP (IPv4 Options)
+
+Level: IPPROTO_IP
+
+1. IP_TTL
+
+Type: int • get/set
+Real-life scenarios:
+
+Limit reachability to LAN (TTL=1)
+
+Security: stop packets from leaving network
+
+Debugging routes
+
+2. IP_TOS (DSCP/TOS/QoS)
+
+Type: int • get/set
+
+Real-life scenarios:
+
+VoIP priority
+
+Gaming priority
+
+Enterprise QoS routing
+
+Works on LAN + WAN (if routers support QoS)
+
+3. IP_HDRINCL
+
+Type: int • get/set
+Real-life scenarios:
+
+Raw packet generation (nmap, traceroute, ping)
+
+Security tools
+
+Packet crafting
+
+Advanced use only
+
+4. IP_OPTIONS
+
+Type: variable buffer • get/set
+Real-life scenarios:
+
+Very rare
+
+Loose source routing (deprecated)
+
+Debugging only
+
+5. IP_RECVDSTADDR
+
+Type: int • get/set
+Real-life scenarios:
+
+UDP servers listening on multiple IPs
+
+Need destination IP of incoming packet
+
+For multi-IP hosts on LAN/WAN
+
+6. IP_RECVIF
+
+Type: int • get/set
+
+Real-life scenarios:
+
+Know which interface a UDP packet arrived on
+
+Important for routers, DHCP servers, and firewalls
+
+7. Multicast options:
+IP_MULTICAST_IF
+
+Select outgoing interface for multicast.
+
+Real-life:
+
+IPTV
+
+LAN video streaming
+
+Routers with multiple NICs
+
+IP_MULTICAST_TTL
+
+Limit multicast range.
+
+Real-life:
+
+TTL=1 for LAN-only multicast
+
+Used widely in IPTV and discovery
+
+IP_MULTICAST_LOOP
+
+Control whether multicast is echoed back.
+
+Real-life:
+
+Disable in servers to avoid duplicate data
+
+Enable for local testing
+
+IP_ADD_MEMBERSHIP / IP_DROP_MEMBERSHIP
+
+Join/leave multicast groups.
+
+Real-life:
+
+IPTV
+
+Stock price feeds
+
+Multiplayer games
+
+IoT
+
+Almost always LAN
+
+8. Source-specific multicast options
+
+IP_BLOCK_SOURCE
+
+IP_UNBLOCK_SOURCE
+
+IP_ADD_SOURCE_MEMBERSHIP
+
+IP_DROP_SOURCE_MEMBERSHIP
+
+Real-life:
+
+Advanced multicast filtering
+
+ISPs, routers, IPTV headends
+
+✅ IPPROTO_IPV6 (IPv6 Options)
+
+Level: IPPROTO_IPV6
+
+1. IPV6_V6ONLY
+
+Type: int • get/set
+Real-life:
+
+Disable IPv4 compatibility
+
+Required for dual-stack servers
+
+Security hardening
+
+2. IPV6_UNICAST_HOPS
+
+IPv6 TTL equivalent.
+
+3. IPV6_MULTICAST_HOPS
+
+Multicast hop limit.
+
+4. IPV6_JOIN_GROUP / IPV6_LEAVE_GROUP
+
+Join/leave IPv6 multicast.
+
+Real-life:
+
+Router Advertisements
+
+Multicast Listener Discovery (MLD)
+
+IPv6-based IPTV
+
+LAN heavy usage
+
+5. IPV6_RECVPKTINFO
+
+Get interface + destination info.
+
+Real-life:
+
+Multihomed IPv6 apps
+
+Advanced routing
+
+VPN tunneling
+
+6. IPV6_DONTFRAG
+
+Drop oversized packets.
+
+Real-life:
+
+PMTU testing
+
+VPN tunnels needing fixed MTU
+
+✅ IPPROTO_TCP (TCP Options)
+
+Level: IPPROTO_TCP
+
+1. TCP_NODELAY
+
+Type: int • get/set
+Disable Nagle.
+
+Real-life:
+
+Gaming
+
+Financial trading
+
+HTTP/1.1 pipelining
+
+VoIP signaling
+
+LAN or WAN
+
+2. TCP_MAXSEG
+
+Type: int • get/set
+Control MSS.
+
+Real-life:
+
+VPN tunneling
+
+Avoid fragmentation
+
+Custom TCP stacks
+
+3. Keepalive tuning
+
+TCP_KEEPIDLE
+
+TCP_KEEPINTVL
+
+TCP_KEEPCNT
+
+Real-life:
+
+Detect dead TCP peers quickly
+
+Mobile networks
+
+Server keepalive policies
+
+4. TCP_QUICKACK
+
+Disable delayed ACKs temporarily.
+
+Real-life:
+
+Low-latency request/response
+
+Database connections
+
+LAN messaging servers
+
+✅ IPPROTO_UDP (UDP Options)
+
+Linux-specific performance options.
+
+1. UDP_CORK
+
+Batch UDP packets.
+
+Real-life:
+
+High-throughput video delivery
+
+Reduce overhead for small packets
+
+Streaming servers (LAN/WAN)
+
+2. UDP_GRO
+
+Enable hardware offload.
+
+Real-life:
+
+10Gb/40Gb/100Gb NICs
+
+Packet capture systems
+
+Datacenter LANs
+
+✅ IPPROTO_SCTP (SCTP Options)
+
+Used in telecom, 5G, Diameter, SS7, WebRTC (DataChannels).
+
+1. SCTP_INITMSG
+
+Set number of inbound/outbound SCTP streams.
+
+Real-life:
+
+Telecom signalling
+
+Multi-streaming applications (VoIP backends)
+
+2. SCTP_NODELAY
+
+Disable bundling.
+
+3. SCTP_AUTOCLOSE
+
+Close after idle time.
+
+Real-life:
+
+Telecom switches needing idle cleanup
+
+4. SCTP_EVENTS
+
+Subscribe to SCTP event notifications.
+
+Real-life:
+
+Multihoming failover
+
+Path failure events
+
+Telecom-grade reliability
+
+5. SCTP_PEER_ADDR_PARAMS
+
+Control per-destination behavior.
+
+Real-life:
+
+Failover routing
+
+Multi-homed servers
+
+Telecom networks
+
 
