@@ -524,6 +524,9 @@ this way we call it.
 here is a full code example of defining 3 different metods which handle 3 different packets differently then defining one function pointer and creating array of that function pointer. and making each function pointer point to each function.
 
 
+
+<pre>
+
 #include <stdio.h>      // for printf()
 #include <stdint.h>     // for uint8_t, standard fixed-width integer types
 #include <arpa/inet.h>  // commonly used for networking functions (htons, htonl), not strictly needed here
@@ -628,6 +631,7 @@ int main() {
 }
 
 
+</pre>
 
 
 
