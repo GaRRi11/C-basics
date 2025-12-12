@@ -1,0 +1,136 @@
+Level: IPPROTO_IP
+
+1. IP_TTL
+
+Type: int • get/set
+Real-life scenarios:
+
+Limit reachability to LAN (TTL=1)
+
+Security: stop packets from leaving network
+
+Debugging routes
+
+2. IP_TOS (DSCP/TOS/QoS)
+
+Type: int • get/set
+
+Real-life scenarios:
+
+VoIP priority
+
+Gaming priority
+
+Enterprise QoS routing
+
+Works on LAN + WAN (if routers support QoS)
+
+3. IP_HDRINCL
+
+Type: int • get/set
+Real-life scenarios:
+
+Raw packet generation (nmap, traceroute, ping)
+
+Security tools
+
+Packet crafting
+
+Advanced use only
+
+4. IP_OPTIONS
+
+Type: variable buffer • get/set
+Real-life scenarios:
+
+Very rare
+
+Loose source routing (deprecated)
+
+Debugging only
+
+5. IP_RECVDSTADDR
+
+Type: int • get/set
+Real-life scenarios:
+
+UDP servers listening on multiple IPs
+
+Need destination IP of incoming packet
+
+For multi-IP hosts on LAN/WAN
+
+6. IP_RECVIF
+
+Type: int • get/set
+
+Real-life scenarios:
+
+Know which interface a UDP packet arrived on
+
+Important for routers, DHCP servers, and firewalls
+
+7. Multicast options:
+IP_MULTICAST_IF
+
+Select outgoing interface for multicast.
+
+Real-life:
+
+IPTV
+
+LAN video streaming
+
+Routers with multiple NICs
+
+IP_MULTICAST_TTL
+
+Limit multicast range.
+
+Real-life:
+
+TTL=1 for LAN-only multicast
+
+Used widely in IPTV and discovery
+
+IP_MULTICAST_LOOP
+
+Control whether multicast is echoed back.
+
+Real-life:
+
+Disable in servers to avoid duplicate data
+
+Enable for local testing
+
+IP_ADD_MEMBERSHIP / IP_DROP_MEMBERSHIP
+
+Join/leave multicast groups.
+
+Real-life:
+
+IPTV
+
+Stock price feeds
+
+Multiplayer games
+
+IoT
+
+Almost always LAN
+
+8. Source-specific multicast options
+
+IP_BLOCK_SOURCE
+
+IP_UNBLOCK_SOURCE
+
+IP_ADD_SOURCE_MEMBERSHIP
+
+IP_DROP_SOURCE_MEMBERSHIP
+
+Real-life:
+
+Advanced multicast filtering
+
+ISPs, routers, IPTV headends
