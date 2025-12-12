@@ -1,0 +1,47 @@
+Used in telecom, 5G, Diameter, SS7, WebRTC (DataChannels).
+
+1. SCTP_INITMSG
+
+Set number of inbound/outbound SCTP streams.
+
+Real-life:
+
+Telecom signalling
+
+Multi-streaming applications (VoIP backends)
+
+2. SCTP_NODELAY
+
+Disable bundling.
+
+3. SCTP_AUTOCLOSE
+
+Close after idle time.
+
+Real-life:
+
+Telecom switches needing idle cleanup
+
+4. SCTP_EVENTS
+
+Subscribe to SCTP event notifications.
+
+Real-life:
+
+Multihoming failover
+
+Path failure events
+
+Telecom-grade reliability
+
+5. SCTP_PEER_ADDR_PARAMS
+
+Control per-destination behavior.
+
+Real-life:
+
+Failover routing
+
+Multi-homed servers
+
+Telecom networks
