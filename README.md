@@ -1,220 +1,730 @@
-## Variables Live in Memory
 
-Every variable has a value and a memory address.
-
-int x = 10;   // value
-
-&x;           // memory location of x
-
-## What Pointers Really Are
-
-A pointer stores the memory address of another variable.
-
-int x = 10;
-
-int *p = &x; 
+----------------------------------------------------------------------- POINTER ----------------------------------------------------------------------------
 
 
-p is the address (example: 0x83498A).
+a pointer variable (*p = &k) always stores address. if we want to know the value which is stores in that certain address, we have to use dereference operator * so *p returns the value saved on that address. just p returns just memory address.
 
-*p is the value living at that address.
 
-C knows int is 4 bytes, so *p reads 4 bytes starting at that address → 10.
+a normal variable (k = 5) stores value. acts as normal variable, when called prints out the value.
 
-Rule:
-Pointer type must match the variable type it points to, otherwise C will read the wrong number of bytes.
 
-USAGE EXAMPLE:
+a value stored in pointer is the another variables memory address. 
 
-Pointers let you access/modify memory indirectly:
+dereferencing *p = getting value inside that address, the value that address is holding.
 
-void change(int x) {
 
-    x = 99; // DOES NOT affect original
-    
-}
+    int k = 5;
 
-void change(int *p) {
+    int *p = &k;
 
-    *p = 99; // changes original
-    
-}
 
-Pointers allow dynamic memory (malloc):
+print(k) - prints 5, the value of k.
 
-int *arr = malloc(100 * sizeof(int));
+print(&k) - prints 473288048, memory address of k.
 
-Pointers let you walk through arrays efficiently
+print(p) - prints 473288048, the value of p, memory address of k.
 
-uint8_t *p = buf;
+print(*p) - prints 5, dereferences p so gives the value which the memory address holds. 
 
-p++; // move to next byte
-
-Pointers allow casting raw bytes into structs (packet parsing)
-
-struct Header *h = (struct Header*)buf;
-
-Some data structures require pointers
-
-linked lists
-
-trees
-
-hash tables
-
-graphs
+print(&p) - prints 21341311, memory address of p.
 
 
 
-pointer[index] = *(pointer + index)
-
-This means:
-
-pb[0] → the byte at address pb
-
-pb[1] → the byte at address pb + 1
-
-pb[2] → the byte at address pb + 2
 
 
-## Pointer Type Defines Read Size
-
-The pointer's type tells C how many bytes to read.
-
-int x = 10;
-
-uint8_t *p = &x;   // unsafe
 
 
-uint8_t* reads only 1 byte from the 4-byte integer — wrong unless intentionally reading raw bytes.
-
-## How Pointers Work With Arrays
-
-An array name decays to the address of its first element.
-
-uint8_t array[4] = {1, 2, 3, 4};
-
-uint8_t *p = array; 
 
 
-p = &array[0]
-
-*p reads the first element → 1
-
-Pointer arithmetic:
-
-*p       // 1
-
-*(p + 2) // 3 (third element, 2 bytes forward)
+    int *arr = calloc(5 * sizeof(int));
 
 
-Because uint8_t is 1 byte, pointer moves by 1 byte each step.
+calloc(5 * sizeof(int)) - allocated memory size of normal int. sets it value to 0 as default. returns it value to *arr. so
 
-## Pointer Arithmetic Moves in Type-Sized Steps
+print(*arr) - prints 0;
+
+print(arr) - prints the address of memory malloc allocated. 
+
+if we do 
+
+*arr = 10;
+
+then
+
+print(*arr) - prints 10;
+
+
+
+The pointer's type tells C how many bytes to read. thats why pointer type must always match the type of variable its pointed to. 
+
+int - reads 8 byte.
+
+uint8_t reads 1 byte.
+
 
 Adding 1 to a pointer moves by the size of the pointed type.
 
 uint32_t *p;
 
-p + 1;  // moves 4 bytes forward
+p + 1; // moves 4 bytes forward
 
 uint8_t *b;
 
-b + 1;  // moves 1 byte forward
+b + 1; // moves 1 byte forward
 
 
-Example:
 
-uint32_t arr[2] = {100, 200};
+----------------------------------------------------------------------- STRING ----------------------------------------------------------------------------
 
-uint32_t *p = arr;
 
-*(p + 1);  // 200
 
-## Struct Memory Layout
 
-A struct is a group of variables placed sequentially in memory.
 
-struct Packet {
 
-    uint8_t type;      // 1 byte
-    
-    uint16_t length;   // 2 bytes
-    
-};
+"Alice" → STRING literal
+
+char *name = "Alice"; -> valid
+
+char name = "Alice";   -> ❌ INVALID
+
+Because:
+
+"Alice" is 6 chars
+
+char name can only store 1 char
+
+Address       Value
+-------------------------
+0x1000        'A'
+0x1001        'l'
+0x1002        'i'
+0x1003        'c'
+0x1004        'e'
+0x1005        '\0'
+
+
+
+so when doing char *name = "Alice";
+
+name is the pointer of that char. is stores the first character - "A".
+
+name = 0x1000
+*name → 'A'
+*(name + 1) → 'l'
+*(name + 2) → 'i'
+
+when printing out that string with printf("%s", name); it starts printing out characters one by one and stops when reaches \0
+
+
+
+'a' → CHARACTER literal
+
+char letter = 'a';   // ✔ OK
+
+
+
+----------------------------------------------------------------------- STRUCT ----------------------------------------------------------------------------
 
 
 Fields are laid out next to each other.
 
 Padding bytes may be inserted between fields for alignment.
 
-## sizeof()
+DEFINING:
 
-sizeof tells you exactly how many bytes something uses.
-
-sizeof(int);        // usually 4
-
-## Network Byte Order
-
-Network byte order is always big-endian.
-
-Multi-byte values must be converted:
-
-htons() → 16-bit
-
-htonl() → 32-bit
-
-uint16_t port = 80;
-
-uint16_t net_port = htons(port);
-
-## Walking Through a Packet
-
-Interpret raw network bytes using a struct pointer.
-
-Raw data:
-
-uint8_t buf[1500];
+1.without typedef
 
 
-Cast to struct:
+struct {
+    char *brand;
+    int model;
+} 
 
-struct Header *h = (struct Header*)buf;
-
-
-Access fields:
-
-h->version → byte at offset 0
-
-h->type → byte at offset 1
-
-h->length → 2 bytes at offset 2
-
-This is walking the packet by reading its structured fields. 
+struct vehicle object -> we have to always write "struct" keyword before struct name and object name.
 
 
-NOTES:
 
-1.addresses must be printed like this 
+2.with typedef
 
 
-    printf("%p\n", (void*)&x); // address
-    printf("%p\n", (void*)p);  // same address
+typedef struct vehicle{
+    char *brand;
+    int model;
+} vehicle;
 
-    
-2.Endianness is how multi-byte numbers are stored in memory. MSB (most significant byte) contributes the most, LSB the least. Hex notation (e.g., 0x12345678) is always MSB→LSB and does not reflect memory layout. Big-endian stores MSB at the lowest address, little-endian stores LSB at the lowest address. Pointers read memory byte by byte, so the first byte depends on endianness. Networking always uses big-endian, so conversions (htons/htonl) may be needed. Value stays the same; only byte order changes.
+vehicle object -> no need of "struct" keyword at beginning when creating object. we just write name of struct and name of object.
 
-3. FD is an int — correct. A file descriptor is just a small integer that the kernel uses to track open resources. Standard FDs when a process starts:
 
-| FD | Name   | Description     |
-| -- | ------ | --------------- |
-| 0  | STDIN  | standard input  |
-| 1  | STDOUT | standard output |
-| 2  | STDERR | standard error  |
+REACHING:
 
-These are automatically opened and managed by the kernel for every process. ✅
+vehicle mycar;
+mycar.brand = "Ford";
+mycar.model = 2007;
 
-System calls for I/O
+
+. is used to reach actual struct variables.
+
+but if we create a pointer which points to struct. for example:
+
+struct vehicle *ptr = &mycar
+
+and we want to reach the brand variable of mycar throught ptr pointer. we must do:
+
+ptr->brand = "subaru"
+
+Structs can contain pointers to other structs
+
+linked list:
+
+struct node {
+    int value;
+    struct node *next;
+};
+
+
+if we want to make a object of a struct from c libraries, for example sockaddr_in object we just include its library #include <netinet/in.h>  and then create object of it like that:
+
+    struct sockaddr_in object;
+
+then do object. and IDE shows list of all variables of that struct.
+
+struct sockaddr_in object;
+object.sin_family = AF_INET;
+object.sin_port = htons(80);
+object.sin_addr.s_addr = inet_addr("192.168.0.1");
+
+this way we have sockaddr_in object configured with our values.
+
+
+
+
+-------------------------------------------------------------- Function arguments by reference -------------------------------------------------------------
+
+
+
+
+this is about how argument is passed to function in c. so if we have a variable 
+
+int n = 10;
+
+and we want to pass it to function. if we pass it normally like this:
+
+addone(n);
+
+
+function will get copy of n instead of actual n. so the memory address of the actual variable n and the n we passed to function will be different.
+
+void addone(int n) {
+    n++;     // only changes the copy
+}
+
+this function gets copy of n as an argument and changes it value then exits. function did its job but real variable n has not changed.
+
+if we want to make function receive the actual variable and change it we have do it like that.
+
+function must be defined like that 
+
+void addone(int *n) {
+    (*n)++;
+}
+
+
+and argument must be passed like that
+
+addone(&n);   // &n = address of n
+
+now function will actually modify the real n variable which we defined previously and make it 6.
+
+so function will get pointer to real n value, dereference it and modify.
+
+
+
+
+------------------------------------------------------------------------ Dynamic allocation ----------------------------------------------------------------
+
+normal:
+
+    struct sockaddr_in client;
+
+this allocated memory in stack 
+
+but if we dynamically allocate memory, its being allocated in heap.
+
+
+
+
+
+
+dynamic:
+
+    struct sockaddr_in *clientMalloc = (struct sockaddr_in*) malloc(sizeof(struct sockaddr_in));
+
+malloc(sizeof(struct sockaddr_in))
+
+Allocates enough memory for one sockaddr_in on the heap
+
+Returns a void* (generic pointer, “pointer to memory with unknown type”)
+
+(struct sockaddr_in *)
+
+Tells the compiler: “Hey, this void pointer is actually a pointer to struct sockaddr_in”
+
+Why needed?
+
+So that you can use -> to access struct members:
+
+clientMalloc->sin_family = AF_INET;
+
+
+malloc must always be returned to pointer, malloc itself returns address of memory, so it must be stored in pointer.
+
+Size must be known → sizeof(type)
+
+Access members via pointer → ->
+
+
+
+
+
+
+
+
+
+free(myperson);
+
+Releases the memory allocated by malloc
+
+Does not delete myperson itself → it still holds the old address
+
+After freeing, accessing myperson->name or myperson->age → undefined behavior (dangerous!)
+
+Good practice: set pointer to NULL after free
+
+
+
+free(myperson);
+myperson = NULL;
+
+
+| Feature                    | `struct sockaddr_in client` | `struct sockaddr_in *clientMalloc = malloc(...)` |
+| -------------------------- | --------------------------- | ------------------------------------------------ |
+| Memory location            | Stack                       | Heap                                             |
+| Size known at compile time | Yes                         | Must specify                                     |
+| Lifetime                   | Ends when function ends     | Stays until `free()`                             |
+| Freeing                    | Automatic                   | Must call `free(clientMalloc)`                   |
+| Access                     | `client.sin_family`         | `clientMalloc->sin_family`                       |
+
+
+
+
+when to use dynamic allocation:
+1.Unknown size at compile time
+
+You don’t know n until runtime
+
+Stack cannot handle variable-length arrays safely in all cases
+
+2.Large number of objects
+
+Stack is limited (few MB)
+
+Heap can allocate large memory blocks safely
+
+3.Data needs to persist beyond function scope
+
+Stack memory is destroyed when function ends
+
+Heap memory persists until you free it
+
+4.Dynamic data structures
+
+Linked lists, trees, queues, etc.
+
+Each node is allocated on heap with malloc
+
+Example: server storing connections dynamically
+
+
+
+
+
+
+--------------------------------------------------------------------- Arrays and Pointers ------------------------------------------------------------------
+
+
+
+define:
+
+char vowels[] = {'A', 'E', 'I', 'O', 'U'};
+char *pvowels = vowels;
+
+
+iterate:
+
+for (int i = 0; i < 5; i++)
+    printf("%c ", *(pvowels + i));  // prints: A E I O U
+
+
+
+
+
+----------------------------------------------------------------------- UNION ------------------------------------------------------------------------------
+
+union is a one memory, like a one variable, in it can be multiple variables but they will be treated as one variable, if overwrited one, others will be overwritten to, unions value will be the largest variables value in it. in this case double.
+
+size of union = size of its biggest member:
+
+union Example {
+    int   a;   // 4 bytes
+    char  b;   // 1 byte
+    double c;  // 8 bytes
+};
+
+
+Size of union = 8 bytes (size of largest member)
+
+
+so that union can max be 8 bytes. so biggest value it can hold is a double value, but it can also hold int value and char value, we can assign and treat it without casting the pointer, example:
+
+
+
+
+in case of struct, we would need to cast pointer everytime.
+
+
+for example:
+
+
+union IPv4 {
+    uint32_t asInt;
+    uint8_t  bytes[4];
+};
+
+This creates a single 4-byte memory block that can be viewed two ways:
+
+4 bytes: bytes[0] bytes[1] bytes[2] bytes[3]
+
+1 integer: asInt (32-bit)
+
+both uint8)t byte[4] and asInt are same memory.
+
+if we do:
+
+    ip.bytes[0] = 192;
+    ip.bytes[1] = 168;
+    ip.bytes[2] = 1;
+    ip.bytes[3] = 1;
+
+
+then this 
+
+    printf("%u.%u.%u.%u\n", ip.bytes[0], ip.bytes[1], ip.bytes[2], ip.bytes[3]);
+
+will print out 192.168.1.1
+
+“When reading the bytes as a uint32_t on a little-endian machine, the integer value appears reversed.” so when we read we see = 16885952.
+
+now we convert it to network endian:
+
+    uint32_t netOrder = htonl(ip.asInt);
+
+and then print it out 
+
+    printf("IPv4 integer: %u\n", netOrder);
+
+
+prints out 
+
+IPv4 integer: 3232235777
+
+
+this is integer value of out string 192.168.1.1 ip. 
+
+the value 3232235777 is a mathematical count of which ip is mine from the 4294967296 entire ipv4 pool.
+
+
+
+
+
+
+-------------------------------------------------------------------- Function Pointers ---------------------------------------------------------------------
+
+
+
+A function pointer is a variable that stores the address of a function.
+
+a function pointer stores the address of code.
+
+for example for this function:
+
+void someFunction(int arg) { ... }
+
+memory layout is:
+
+0x1000: machine code of someFunction
+
+so A function pointer simply stores that memory address:
+
+void (*pf)(int) = &someFunction;
+
+Now pf points to address 0x1000.
+
+
+
+a function pointer we use to call the function it points to for example:
+
+pf(5);     // jumps to address 0x1000 and executes the function
+
+this calls somefunction with argument 5.
+
+
+
+
+
+syntax:
+
+this is how we declare the function pointer, its not assigned yet.
+
+void (*pf)(int);
+
+
+Read from inside out:
+
+✔ 1. pf is a variable
+✔ 2. (*pf) means pf is a pointer
+✔ 3. return type is void
+✔ 4. function takes (int)
+
+So it means:
+
+pf is a pointer to a function returning void and taking int.
+
+
+    pf = someFunction; // assign
+
+now its assigned and points to someFunction.
+
+
+ pf(5);
+
+this way we call it.
+
+
+
+
+
+
+
+
+
+
+
+
+
+here is a full code example of defining 3 different metods which handle 3 different packets differently then defining one function pointer and creating array of that function pointer. and making each function pointer point to each function.
+
+
+#include <stdio.h>      // for printf()
+#include <stdint.h>     // for uint8_t, standard fixed-width integer types
+#include <arpa/inet.h>  // commonly used for networking functions (htons, htonl), not strictly needed here
+
+// ---------------------------
+// 1. Define a function pointer type
+// ---------------------------
+
+// typedef allows us to create a new name for a type
+// PacketHandler is now a type that is a pointer to a function
+// that takes a pointer to uint8_t (byte array) and a size_t length, and returns void
+typedef void (*PacketHandler)(uint8_t* data, size_t len);
+// uint8_t* data = pointer to the raw packet bytes
+// size_t len  = how many bytes are in the packet
+
+// ---------------------------
+// 2. Define example packet handler functions
+// ---------------------------
+
+void handleLogin(uint8_t* data, size_t len) {
+    // This function handles a LOGIN packet
+    // data points to the payload of the packet (here, username bytes)
+    // len tells how many bytes are in the username
+    printf("LOGIN packet: username length = %zu\n", len);
+}
+
+void handleMessage(uint8_t* data, size_t len) {
+    // This function handles a MESSAGE packet
+    // Here we just print the first byte as an example
+    printf("MESSAGE packet: first byte = %u\n", data[0]);
+}
+
+void handlePing(uint8_t* data, size_t len) {
+    // Handles a PING packet
+    // No payload needed, we just acknowledge it
+    printf("PING packet received!\n");
+}
+
+// ---------------------------
+// 3. Create a table of packet handlers
+// ---------------------------
+
+// Array of 256 PacketHandler function pointers
+// Each index corresponds to a possible packet type (0x00 to 0xFF)
+// We will store pointers to the correct handler function for each type
+PacketHandler handlers[256];
+
+// ---------------------------
+// 4. Initialize the handlers table
+// ---------------------------
+
+void initHandlers() {
+    // Assign handler functions to specific packet types
+    // 0x01 = LOGIN
+    handlers[0x01] = handleLogin;
+
+    // 0x02 = MESSAGE
+    handlers[0x02] = handleMessage;
+
+    // 0x03 = PING
+    handlers[0x03] = handlePing;
+
+    // Other entries remain NULL by default
+}
+
+// ---------------------------
+// 5. Function to "receive" a packet
+// ---------------------------
+
+void receivePacket(uint8_t type, uint8_t* data, size_t len) {
+    // Look up the handler function for this packet type
+    PacketHandler h = handlers[type];
+
+    if (h != NULL) {
+        // If a handler exists, call it with the packet data and length
+        h(data, len);  // syntax: function pointer call
+    } else {
+        // If no handler is registered, print unknown packet
+        printf("Unknown packet type: %u\n", type);
+    }
+}
+
+// ---------------------------
+// 6. Main function
+// ---------------------------
+
+int main() {
+    initHandlers();  // initialize the handler table
+
+    // Example packet data arrays
+    uint8_t loginData[] = { 'A', 'l', 'i' }; // LOGIN packet payload
+    uint8_t msgData[]   = { 42 };            // MESSAGE packet payload
+    uint8_t pingData[]  = { };               // PING packet has no payload
+
+    // Simulate receiving packets
+    receivePacket(0x01, loginData, 3); // LOGIN
+    receivePacket(0x02, msgData, 1);   // MESSAGE
+    receivePacket(0x03, pingData, 0);  // PING
+    receivePacket(0xFF, pingData, 0);  // Unknown packet type
+
+    return 0;  // exit
+}
+
+
+
+
+
+
+
+-------------------------------------------------------------------------- Bitmasks ------------------------------------------------------------------------
+
+
+
+|= → set a bit
+
+&= ~ → clear a bit
+
+^= → flip a bit
+
+(tcp_flags >> i) & 1 → extract the i-th bit for printing
+
+
+
+
+#include <stdio.h>   // for printf()
+#include <stdint.h>  // for uint8_t (8-bit unsigned integer)
+
+// ---------------------------
+// TCP flags positions (bit index)
+// ---------------------------
+#define FIN 0   // FIN flag is bit 0
+#define SYN 1   // SYN flag is bit 1
+#define RST 2   // RST flag is bit 2
+#define PSH 3   // PSH flag is bit 3
+#define ACK 4   // ACK flag is bit 4
+#define URG 5   // URG flag is bit 5
+
+int main() {
+    uint8_t tcp_flags = 0; // initialize flags byte to 0 (all flags cleared)
+
+    // ---------------------------
+    // Set flags
+    // ---------------------------
+    tcp_flags |= 1 << SYN; // set SYN bit (bit 1) to 1 using OR and shift
+    tcp_flags |= 1 << ACK; // set ACK bit (bit 4) to 1
+
+    // ---------------------------
+    // Check if ACK flag is set
+    // ---------------------------
+    // AND the tcp_flags with mask (1 << ACK). If result is non-zero, bit is set
+    if (tcp_flags & (1 << ACK))
+        printf("ACK is set!\n");  // prints because ACK was set above
+
+    // ---------------------------
+    // Clear SYN flag
+    // ---------------------------
+    // ~(1 << SYN) inverts mask: 11111101
+    // AND with tcp_flags clears SYN bit while leaving others unchanged
+    tcp_flags &= ~(1 << SYN);
+
+    // ---------------------------
+    // Flip (toggle) FIN flag
+    // ---------------------------
+    // XOR with mask (1 << FIN) toggles the FIN bit
+    tcp_flags ^= 1 << FIN; 
+
+    // ---------------------------
+    // Print resulting flags in binary
+    // ---------------------------
+    printf("TCP flags: 0b");
+    for(int i = 7; i >= 0; i--)  // iterate from most significant bit to least
+        printf("%d", (tcp_flags >> i) & 1); // shift right i times and AND with 1 to get bit value
+    printf("\n");  // newline
+
+    return 0;  // exit program
+}
+
+
+
+
+
+
+
+
+
+
+----------------------------------------------------------------------------- FD ---------------------------------------------------------------------------
+
+
+A file descriptor is just a small integer that the kernel uses to track open resources. Standard FDs when a process starts:
+
+FD	Name	Description
+0	STDIN	standard input
+1	STDOUT	standard output
+2	STDERR	standard error
+
+
+
+These are automatically opened and managed by the kernel for every process.
+
+
 
 write(int fd, const void *buf, size_t count) → writes count bytes from buf to the file/socket/resource identified by fd.
 
@@ -224,17 +734,12 @@ read(int fd, void *buf, size_t count) → reads up to count bytes into buf from 
 
 Example: fd = 0 → stdin (process reads input).
 
-4. Sockets 
 
-What are sockets?
 
-Sockets are used to send and receive data between processes (locally) or over a network (between devices).
 
-Sockets allow TCP and UDP.
 
-Other protocols are built on top of these two.
+------------------------------------------------------------------------- SOCKET ---------------------------------------------------------------------------
 
-A socket itself is a file descriptor, so we can read(), write(), and close() it like a normal FD.
 
 Creating a Socket
 
@@ -242,321 +747,26 @@ Template:
 
 socket(domain, type, protocol)
 
-
 Example:
 
 int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
-Parameters
+
 
 domain → AF_INET for IPv4, AF_INET6 for IPv6, AF_UNIX for local communication
 
 type → SOCK_STREAM for TCP, SOCK_DGRAM for UDP
 
-protocol → 0 (kernel chooses default protocol for that type)
 
-socket() returns a file descriptor (>= 0) or -1 on error.
 
-Creating a TCP Client
 
-To connect to a server we need to prepare a sockaddr_in structure.
 
-Here we save IP + PORT for IPv4 format.
 
-Steps
 
-1. Create struct
-   
-struct sockaddr_in addr;
 
-3. Set address family
-   
-addr.sin_family = AF_INET;
 
 
-This makes sockaddr_in a valid IPv4 address struct.
 
-3. Set destination port
-   
-addr.sin_port = htons(8080);
-
-
-We convert the port to network byte order (big-endian).
-
-4. Convert destination IP to 32-bit binary
-   
-inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
-
-
-This converts the loopback IP from string to a 32-bit IPv4 address.
-
-5. Connect
-   
-connect(sock, (struct sockaddr*)&addr, sizeof(addr));
-
-
-sock → the local socket FD
-
-addr → server IP + port
-
-sizeof(addr) → lets OS know the structure size
-
-If connection succeeds, the TCP 3-way handshake happens:
-
-SYN →
-← SYN + ACK
-ACK →
-
-Sending Data
-
-char msg[] = "hello server";
-
-
-Create message we want to send to server.
-
-send(sock, msg, strlen(msg), 0);
-
-
-sock → the connected socket
-
-msg → pointer to bytes
-
-strlen(msg) → number of bytes (11, without '\0')
-
-0 → no special flags
-
-Closing
-
-close(sock);
-
-
-Closes the connection.
-
-This sends FIN packet to the server.
-
-
-5. RAW PACKET
-
-✅ Raw Packets – Craft ARP and Send to LAN
-
-Choosing interface
-
-const char *iface = "eth0";   // specify interface
-
-✅ Why AF_PACKET + SOCK_RAW
-
-When crafting raw packets where we want to manually assign src MAC, src IP, and all other fields, we must use:
-
-AF_PACKET, SOCK_RAW
-
-
-If we don't, the kernel will override IP and MAC values.
-
-✅ Creating raw socket
-
-int sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ARP));
-
-
-AF_PACKET: allows sending full Ethernet frames
-
-SOCK_RAW: gives raw access to link-layer
-
-htons(ETH_P_ARP): tell kernel we are interested in ARP protocol (protocol filter)
-
-ETH_P_ALL can be used to capture or send all protocols
-
-✅ Interface index
-
-C knows interfaces by index (integer IDs):
-
-eth0 → 2
-
-wlan0 → 3
-
-
-Use SIOCGIFINDEX ioctl to get index from interface name.
-
-✅ Crafting ARP packet fields
-
-Source MAC
-
-unsigned char src_mac[6];
-
-
-Store the source MAC for the packet (can be random 6 bytes).
-
-Source IP
-
-uint32_t src_ip_netorder;
-
-
-Store source IPv4 in network byte order.
-
-Target IP
-
-uint32_t target_ip_netorder;
-
-✅ Ethernet + ARP frame layout
-
-Ethernet header: 14 bytes
-
-- dst MAC (6)
-  
-- src MAC (6)
-  
-- ethertype (2) -> 0x0806 for ARP
-
-ARP payload (request): 28 bytes
-
-- htype (2) = 1
-- ptype (2) = 0x0800
-- hlen (1) = 6
-- plen (1) = 4
-- opcode (2) = 1 (request)
-- sender MAC (6)
-- sender IP (4)
-- target MAC (6) = zeros
-- target IP (4)
-
-Total = 42 bytes
-
-✅ Frame buffer
-
-unsigned char frame[42];
-
-
-Buffer that holds full Ethernet frame.
-
-All indexes refer to offsets in this array.
-
-✅ Destination MAC
-
-unsigned char dest_mac[6] = {ff:ff:ff:ff:ff:ff};
-
-
-Broadcast to forward packet to everyone in LAN.
-
-✅ EtherType
-
-frame[12] = 0x08;  
-frame[13] = 0x06;
-
-✅ ARP header fields
-
-frame[14] = 0x00; frame[15] = 0x01;    // HTYPE = 1 (Ethernet)
-frame[16] = 0x08; frame[17] = 0x00;    // PTYPE = 0x0800 (IPv4)
-frame[18] = 6;                         // HLEN = 6
-frame[19] = 4;                         // PLEN = 4
-frame[20] = 0x00; frame[21] = 0x01;    // opcode = 1 (request)
-
-memcpy(frame + 22, src_mac, 6);        // sender MAC
-memcpy(frame + 28, &src_ip_netorder, 4);  // sender IP
-memset(frame + 32, 0x00, 6);           // target MAC = unknown
-memcpy(frame + 38, &target_ip_netorder, 4); // target IP
-
-✅ sockaddr_ll setup
-
-struct sockaddr_ll socket_address;
-
-
-Contains:
-
-family = AF_PACKET
-
-interface index
-
-hardware address length = 6
-
-destination MAC address
-
-✅ Sending the packet
-
-ssize_t bytes_sent = sendto(sock, frame, sizeof(frame), 0,
-                (struct sockaddr*)&socket_address,
-                sizeof(socket_address));
-
-
-If bytes_sent > 0 → successfully sent.
-
-✅ Closing
-
-close(sock);
-
-✅ Sniff all packets in LAN
-
-Create sniffer socket
-
-int sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
-
-
-AF_PACKET → capture raw L2 frames
-
-SOCK_RAW → get entire Ethernet frame (header + payload)
-
-ETH_P_ALL → capture every protocol (ARP, IPv4, IPv6, etc)
-
-Bind to interface
-
-int ifindex = ifr.ifr_ifindex;
-
-
-Bind socket to correct interface index.
-
-Sniff loop
-while (1) {
-    recvfrom(sock, buffer, sizeof(buffer), 0, NULL, NULL);
-}
-
-
-Parse offsets in buffer and print in human-readable form.
-
-✅ Changes if using IPv6 instead of IPv4
-
-Sender (raw crafting)
-
-EtherType = 0x86DD
-
-No ARP → use ICMPv6 ND
-
-16-byte IPs
-
-IPv6 header = 40 bytes
-
-Must compute ICMPv6 checksum
-
-Address conversion uses AF_INET6
-
-Sniffer
-
-Detect IPv6 using EtherType 0x86DD
-
-Parse 40-byte header
-
-IPs are 16 bytes printed via inet_ntop(AF_INET6)
-
-No ARP → instead ICMPv6 ND
-
-
-
-
-
-
-
----------------------------------------------------------------- C NETWORKING
-
-UNIX
-
-chapter 3 - 7 - 14 - 17 - 27 - 28 - 29
-
-PF_PACKET (AF_PACKET) — Kernel will NOT override anything
-
-af_packet not overriden just fails if not specified l2 and af_intet overriden always
-
-
-
-ROADMAP
-
-protocols - rules of networking between devices. protocol can have different level of rules, like ethenet cable voltage(low level) or how JPEG image gets formatted (high level)
 
 OSI LAYER MODEL
 
