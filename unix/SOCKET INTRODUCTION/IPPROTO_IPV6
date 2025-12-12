@@ -1,0 +1,57 @@
+
+Level: IPPROTO_IPV6
+
+1. IPV6_V6ONLY
+
+Type: int • get/set
+Real-life:
+
+Disable IPv4 compatibility
+
+Required for dual-stack servers
+
+Security hardening
+
+2. IPV6_UNICAST_HOPS
+
+IPv6 TTL equivalent.
+
+3. IPV6_MULTICAST_HOPS
+
+Multicast hop limit.
+
+4. IPV6_JOIN_GROUP / IPV6_LEAVE_GROUP
+
+Join/leave IPv6 multicast.
+
+Real-life:
+
+Router Advertisements
+
+Multicast Listener Discovery (MLD)
+
+IPv6-based IPTV
+
+LAN heavy usage
+
+5. IPV6_RECVPKTINFO
+
+Get interface + destination info.
+
+Real-life:
+
+Multihomed IPv6 apps
+
+Advanced routing
+
+VPN tunneling
+
+6. IPV6_DONTFRAG
+
+Drop oversized packets.
+
+Real-life:
+
+PMTU testing
+
+VPN tunnels needing fixed MTU
