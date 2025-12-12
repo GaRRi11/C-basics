@@ -1,0 +1,1109 @@
+
+
+with datalink layer we can capture frames like: 
+
+
+Ethernet II
+
+[ dst MAC (6) ][ src MAC (6) ][ EtherType (2) ][ payload (46–1500) ][ FCS (4) ]
+
+EtherType indicates what protocol is in payload (0x0800 = IPv4, 0x86DD = IPv6, 0x0806 = ARP, 0x8100 = 802.1Q VLAN tag, etc.).
+
+
+ARP
+
+Not an IP datagram, so raw IP sockets (AF_INET, SOCK_RAW, IPPROTO_*) will not receive ARP. You must capture at the datalink layer (BPF/pcap/AF_PACKET) to see ARP.
+
+
+VLAN (IEEE 802.1Q)
+
+[ dst MAC ][ src MAC ][ 0x8100 ][ VLAN tag (TPID/TCI) ][ EtherType ][ payload ]
+
+
+
+
+PPP
+
+Used for serial links, PPPoE, some VPN tunnels.
+
+
+non-IP packets
+
+outgoing packets before IP transmits them
+
+incoming packets before IP handles them
+
+
+
+
+You see every frame your interface receives — even ones not destined for you — if you put NIC into promiscuous mode.
+
+
+you can see:
+
+✔ Non-IP protocols
+
+Examples:
+
+ARP
+
+RARP
+
+STP
+
+LLDP
+
+custom protocols
+
+
+
+
+
+
+you can buid:
+
+ARP daemon
+
+RARP server
+
+DHCP server (though DHCP uses IP, still needs raw access sometimes)
+
+Custom L2 authentication protocols
+
+Ethernet-based discovery tools
+
+
+
+
+
+Limitation: switched networks
+
+On a switch, you only see:
+
+Broadcast
+
+Multicast you are subscribed to
+
+Unicast frames only if addressed to you
+
+To see all LAN traffic you need:
+
+Port-mirroring / SPAN
+
+A tap device
+
+A hub (historical)
+
+To see all traffic on a switched LAN:
+
+Port mirroring / SPAN: configure the switch to copy all traffic from specified ports or VLANs to the monitoring port where your machine is attached.
+
+Network TAP: hardware device that splits the fiber/copper to mirror traffic—reliable and passive.
+
+ARP/Gratuitous ARP trickery (network abuse) can make switches flood, but not recommended.
+
+
+
+
+
+
+
+
+libpcap
+
+libpcap hides all this. Your program sees one API, and libpcap uses BPF or DLPI or SOCK_PACKET internally.
+
+
+
+
+
+
+
+
+
+BPF
+
+BPF hooks into a NIC driver:
+
+on receive (right after packet arrives from wire)
+
+on transmit (right before leaving NIC)
+
+This is why BPF timestamps are extremely accurate.
+
+On receive (RX): right after the NIC driver hands the frame to the kernel, BPF gets a copy to apply filtering and optionally buffer for user-space. Then kernel continues processing (IP stack, ARP handling, etc.).
+
+On transmit (TX): just before a frame is handed to the NIC driver to be transmitted, BPF gets a copy (for timestamping/monitoring). Then driver sends it
+
+If you want to stop kernel processing, XDP to drop packets at driver level.
+
+
+
+
+
+
+
+BPF features
+
+
+
+
+filtering
+
+filtering packets before coping them to program:
+
+udp or tcp
+host 1.1.1.1
+tcp and port 80
+tcp[13:1] & 0x7 != 0       # SYN, FIN, RST
+
+
+The ASCII filter is compiled into BPF bytecode using pcap_compile().
+
+
+
+
+
+snaplen
+
+You can request only the first N bytes of each packet.
+
+Most sniffers only need headers.
+
+Reduces kernel → user copy cost.
+
+example:
+
+snaplen = 96 bytes
+
+Enough for Ethernet + IPv6 + TCP headers + a bit of payload.
+
+tcpdump default is 96.
+
+
+
+
+
+Double-buffering & read timeout
+
+Each BPF instance has:
+
+two kernel buffers
+
+while one fills, the other is copied to user-space during read()
+
+This avoids losing packets.
+
+
+BPF issues a read() only when:
+
+buffer is full, or
+
+read timeout expires
+
+tcpdump uses 1 second timeout.
+RARP daemon uses 0 → immediate return.
+
+
+
+
+
+Promiscuous mode
+
+BPF can tell NIC to accept frames not addressed to you.
+
+Example:
+
+ioctl(fd, BIOCPROMISC, &on);
+
+
+Used by sniffers like tcpdump.
+
+promiscoud vs wifi monitor: Promiscuous on Wi-Fi (if supported) might accept frames for other MACs within the same association, but monitor gives you raw 802.11, including frames from devices the NIC is not associated with, and allows capture of management/control frames and frames on other channels if the card is set to them.
+
+
+
+
+
+
+
+
+
+
+Writing packets (sending)
+
+BPF is usually used for reading, but you can write arbitrary L2 frames.
+
+Used for:
+
+RARP server sending RARP replies (which are NOT IP packets)
+
+custom protocols
+
+Ethernet-based tools
+
+If you want to send IP packets, you don’t need BPF — use a raw socket + IP_HDRINCL.
+
+
+
+
+
+
+
+
+
+
+
+Why libpcap is introduced
+
+Because:
+
+BPF is only for BSD-like systems.
+
+DLPI is only for SysV systems.
+
+SOCK_PACKET was Linux-only and is now deprecated.
+
+libpcap:
+
+abstracts all these methods
+
+gives you common API: pcap_open_live(), pcap_loop(), pcap_compile(), etc.
+
+ensures your program is portable across Unix-like systems
+
+Wireshark, tcpdump, Snort, Zeek all use libpcap.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+✔ Example 1 — tcpdump
+
+Uses:
+
+promiscuous mode
+
+snaplen
+
+filtering
+
+BPF read buffers
+
+timestamp accuracy
+
+
+
+
+
+
+
+
+
+✔ Example 3 — constructing DNS packets manually
+
+Author builds UDP packets manually using raw sockets (IP_HDRINCL).
+Replies are captured using libpcap, not the kernel’s UDP stack.
+
+This allows them to test whether DNS server generates UDP checksums or not.
+
+
+
+
+
+
+
+
+
+
+
+
+snort:
+
+How it works: uses rules (signatures) to match packet payloads/headers (e.g., “alert if TCP payload contains this pattern”).
+
+
+
+
+
+
+Raw sockets vs AF_PACKET vs BPF vs XDP — quick guide
+
+Raw IP socket (SOCK_RAW, AF_INET): lets you read/write IP datagrams and build your own IP header (sometimes limited). Works at L3 (IP). Good for ICMP, OSPF, custom IP protocols. Kernel still owns NIC.
+
+AF_PACKET (packet socket): raw access to full L2 frames on Linux. You can read/write Ethernet frames in user space. Lower-level than raw IP sockets.
+
+BPF / libpcap: kernel filter + buffer + timestamp. You open /dev/bpf (BSD) or use libpcap which abstracts BPF/DLPI/packet sockets. BPF gives a safe, efficient tap to user space.
+
+XDP/eBPF: runs code at the driver level (very early) — can drop or redirect packets before the kernel IP stack sees them. Use this if you need to prevent kernel processing.
+
+DPDK / netmap / PF_RING: user-space kernel-bypass frameworks for maximum performance and absolute control over RX/TX.
+
+
+
+
+
+
+| Protocol       | Layer          | Seen by Raw IP Socket? | Seen by pcap? |
+| -------------- | -------------- | ---------------------- | ------------- |
+| **ARP**        | L2             | ❌ No                   | ✔ Yes         |
+| **IPv6 NS/NA** | L3 inside IPv6 | ✔ Yes                  | ✔ Yes         |
+
+
+
+
+Ethernet = 802.3
+
+Wi-Fi = 802.11
+
+VLAN = 802.1Q
+
+Bridging = 802.1D
+
+
+
+
+
+
+
+
+🔹 BPF / libpcap / AF_PACKET / monitor mode
+
+These hook before the kernel’s IP layer, directly at the NIC level.
+
+You see:
+
+Ethernet frames
+
+ARP (non-IP)
+
+VLAN tagged frames
+
+STP (non-IP)
+
+LLDP (non-IP)
+
+PPPoE
+
+CDP, RARP, NetBIOS
+
+Any random L2 protocol
+
+Broken packets
+
+Duplicates
+
+Bad checksums (if NIC doesn’t drop)
+
+→ TX/RX hooks here mean all packets.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Promiscuous mode = Ethernet feature
+
+NIC accepts all valid Ethernet frames, but still only receives what the switch sends you.
+
+Monitor mode = Wi-Fi feature
+
+NIC receives radio frames, including:
+
+management frames
+
+control frames
+
+encrypted data frames
+
+retransmissions
+
+corrupted frames
+
+AP transmissions not meant for you
+
+👉 Monitor mode is much deeper than promiscuous mode.
+
+Promiscuous mode ≠ monitor mode.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+LINUX DATALINK ACCESS
+
+PF_PACKET (Modern, Correct Method)
+
+Introduced in Linux 2.2+ and used by:
+
+tcpdump
+
+Wireshark
+
+Suricata
+
+Snort
+
+Zeek/Bro
+
+libpcap
+
+every L2 sniffer in existence
+
+Two modes:
+Mode	Description
+SOCK_RAW	You get full L2 frame: Ethernet header + payload
+SOCK_DGRAM	"Cooked" packets: Linux strips L2 header and gives cleaned metadata
+Examples:
+Receive everything on the NIC:
+fd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+
+Receive only IPv4 frames:
+fd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_IP));
+
+Receive only ARP:
+fd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ARP));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+libpcap
+
+libpcap is the portable, OS-independent abstraction layer for packet capture.
+Instead of applications having to know BPF, DLPI, NIT, PF_PACKET, etc., they just use libpcap, and libpcap internally chooses the correct mechanism.
+
+
+
+Application (tcpdump, Wireshark, custom tools)
+           ↓
+        libpcap (portable API)
+           ↓
+ OS-specific capture engine (BPF/DLPI/PF_PACKET/NIT/etc.)
+           ↓
+      Network Interface
+
+
+
+
+
+Provides a unified API
+
+Regardless of OS:
+
+On BSD → uses BPF
+
+On HP-UX / Solaris → uses DLPI
+
+On SunOS → uses NIT
+
+On Linux → uses SOCK_PACKET or PF_PACKET
+
+On Windows → WinPcap/Npcap (port of libpcap)
+
+Your program doesn’t need to know which one.
+
+
+
+
+Handles filtering (via BPF bytecode)
+
+libpcap compiles filter expressions such as:
+
+"tcp and port 80"
+
+
+into BPF bytecode, and then loads that into:
+
+kernel BPF engine (BSD/Linux)
+
+
+
+
+
+
+
+Provides packet capture functions
+
+Common functions include:
+
+pcap_open_live() — open an interface for capturing
+
+pcap_compile() — compile a filter
+
+pcap_setfilter() — apply the filter
+
+pcap_loop() or pcap_next() — read packets
+
+pcap_close() — cleanup
+
+tcpdump uses exactly these functions.
+
+
+
+
+
+
+
+
+
+- INJECTION -- INJECTOIN -- INJECTION -- INJECTOIN -- INJECTION -- INJECTOIN -- INJECTION -- INJECTOIN -- INJECTION -- INJECTOIN -- INJECTION -- INJECTOIN -  
+
+
+libpcap
+
+
+✔ 1. pcap_inject()
+int pcap_inject(pcap_t *p, const void *buf, size_t size);
+
+
+Sends raw bytes on the wire.
+
+Returns number of bytes written or -1 on failure.
+
+Faster than pcap_sendpacket() because it avoids extra copies.
+
+Use case:
+
+High-performance packet generators
+
+IDS/IPS systems
+
+ARP spoofing, DHCP crafting, custom L2 protocols
+
+✔ 2. pcap_sendpacket()
+int pcap_sendpacket(pcap_t *p, const u_char *buf, int size);
+
+
+Does exactly the same thing as pcap_inject().
+
+Always returns 0 on success, non-zero on error.
+
+Lower-level, older API.
+
+Some platforms only implemented this first.
+
+
+
+
+
+✔ Differences between the two (short version)
+
+| Feature      | pcap_inject()    | pcap_sendpacket()     |
+| ------------ | ---------------- | --------------------- |
+| Return value | bytes sent       | 0 / error             |
+| Performance  | slightly faster  | slightly slower       |
+| Age          | newer API        | older API             |
+| Support      | widely supported | universally supported |
+
+
+Most programs use pcap_sendpacket() for compatibility.
+
+
+
+
+
+✔ Linux backend for packet injection
+
+When you call these functions, libpcap uses PF_PACKET (SOCK_RAW) internally:
+
+pcap_sendpacket()
+       ↓
+Linux PF_PACKET socket
+       ↓
+NIC hardware
+
+
+This means:
+
+Full L2 frame control (destination MAC, source MAC, EtherType)
+
+You can send packets even with bogus headers
+
+You can craft non-IP protocols (ARP, PPPoE, STP, LLDP, your own protocols)
+
+You bypass the IP stack entirely
+
+It is true raw injection, not “raw IP” like with AF_INET raw sockets.
+
+
+
+
+
+
+✔ Examples of what you can send
+1. Custom Ethernet frame
+
+Destination MAC: FF:FF:FF:FF:FF:FF
+
+Source MAC: anything
+
+EtherType: 0x1234
+
+Payload: 200 bytes of your choosing
+
+2. ARP spoofing
+
+Crafted ARP reply packets.
+
+3. DHCP discovery or ACKs
+4. TCP packets with invalid flags or checksum (for research)
+5. Entire custom protocols (Layer 2 or Layer 3)
+
+
+
+
+✔ Requirements
+root privileges or equivalent capabilities:
+CAP_NET_RAW
+CAP_NET_ADMIN
+
+
+Newer Linux distributions allow non-root users to send raw packets if:
+
+Network namespace grants permissions
+
+Capabilities are assigned
+
+The interface is configured appropriately
+
+
+
+
+2. WinPcap / Npcap — ✔ Yes, true low-level packet injection
+
+Windows supports full L2 injection only through Npcap (or legacy WinPcap):
+
+✔ You can send:
+
+Custom MAC addresses
+
+Custom IP source addresses
+
+Custom EtherType (ARP, IPv4, IPv6, LLDP, STP, custom protocol)
+
+Entire Ethernet frames built manually as a byte array
+
+Jumbo frames (if NIC supports)
+
+✔ You bypass Windows TCP/IP stack completely.
+✔ You are basically writing bytes directly to the NIC transmit ring.
+
+Example in C (Npcap / WinPcap API):
+
+pcap_sendpacket(handle, frame, frame_len);
+
+
+Where frame is a manually crafted Ethernet frame, e.g.:
+
+[Dst MAC][Src MAC][EtherType][Payload][Checksum]
+
+
+
+
+
+
+🟣 Does Windows verify frame contents before sending?
+
+No.
+
+Npcap writes directly into the NIC driver API:
+
+No IP checksum verification
+
+No TCP checksum verification
+
+No filtering
+
+No IP layer involvement
+
+Optional: you can even include your own FCS (NIC usually recalculates unless offload disabled)
+
+
+
+
+
+
+libnet
+
+libnet makes it easier to create:
+
+Raw IP packets
+
+Custom TCP/UDP packets
+
+ARP, Ethernet, VLAN frames
+
+ICMP, IGMP
+
+Custom protocols
+
+Full L2-crafted frames, bit-by-bit
+
+
+
+💡 Why libnet? (Problem it solves)
+
+Building packets manually with raw sockets or PF_PACKET is tedious:
+
+You must:
+
+fill every field in IP, TCP, UDP headers
+
+compute checksums
+
+calculate lengths
+
+assemble data in proper order
+
+handle byte ordering
+
+handle fragmentation rules
+
+handle link-layer headers when needed
+
+libnet hides all that.
+
+
+
+
+
+🔧 libnet provides two injection modes
+1️⃣ Raw socket mode (L3 injection)
+
+libnet builds the packet like this:
+
+[IP Header][Protocol Header][Payload]
+
+
+Then sends via a raw socket:
+
+socket(AF_INET, SOCK_RAW, IPPROTO_RAW)
+
+
+Kernel adds:
+
+Ethernet header
+
+Some automatic fields (depending on IP_HDRINCL)
+
+Used for crafting:
+
+IP
+
+ICMP
+
+TCP
+
+UDP
+
+2️⃣ Datalink mode (L2 injection)
+
+libnet builds the entire Ethernet frame:
+
+[Dst MAC][Src MAC][EtherType][Payload]
+
+
+This is equivalent to Linux PF_PACKET/SOCK_RAW or pcap_sendpacket.
+
+Used for crafting:
+
+ARP
+
+Ethernet frames
+
+VLAN (802.1Q)
+
+STP, LLDP
+
+Custom protocols
+
+Custom MAC-level attacks (MITM, ARP spoofing, LAN scanning)
+
+
+
+
+
+🎯 libnet gives portable packet injection
+
+raw sockets and PF_PACKET are not portable:
+
+Linux has PF_PACKET
+
+BSD has BPF
+
+Solaris has DLPI
+
+Windows has WinPcap/Npcap
+
+AIX/HP-UX have their own APIs
+
+Some systems restrict raw sockets
+
+Some handle checksums differently
+
+libnet abstracts all of that.
+
+Your C code stays the same → libnet handles the platform differences.
+
+
+
+
+
+🧱 libnet API structure (simple version)
+Step 1 — Initialize the library
+libnet_t *lnet = libnet_init(LIBNET_RAW4, device, errbuf);
+
+Step 2 — Build protocol headers
+
+e.g., build IP header:
+
+libnet_build_ipv4(
+    len, tos, id, frag, ttl, proto, checksum,
+    src_ip, dst_ip, payload, payload_s, lnet, 0
+);
+
+
+Or build full Ethernet frame:
+
+libnet_build_ethernet(
+    dst_mac, src_mac, ETHERTYPE_IP, payload, payload_s, lnet, 0
+);
+
+Step 3 — Inject packet
+libnet_write(lnet);
+
+Step 4 — Cleanup
+libnet_destroy(lnet);
+
+
+
+
+
+
+
+
+
+Real-World Uses
+
+libpcap is used by:
+
+tcpdump
+
+Wireshark (via WinPcap/Npcap)
+
+Snort IDS / Suricata
+
+Bro/Zeek
+
+many custom security tools
+
+Almost every network analysis tool relies on libpcap.
+
+
+
+
+
+
+
+
+libpcap vs libnet
+
+libpcap
+
+libpcap is fundamentally a capture/sniffing library.
+
+libnet gives separate templates for l2 and l3 packet crafting. libpcap does not help crafting packets. just sends the bytes you provide him.
+
+libpcap does NOT:
+
+build Ethernet headers
+
+build IP/TCP/UDP headers
+
+compute checksums
+
+manage fragmentation
+
+auto‑fill MAC or IP
+
+support header stacking
+
+support protocol construction
+
+
+
+
+
+
+libnet for crafting and injection.
+
+
+constructs Ethernet headers
+
+constructs IP, TCP, UDP, ICMP, IGMP headers
+
+manages stacking (L2→L3→L4)
+
+computes checksums
+
+computes lengths
+
+handles source IPs/MACs
+
+provides RAW and DATALINK injection modes
+
+is portable across OSes
+
+
+has direct functions for crafting specific packets:
+
+libnet_build_icmp_echo(...);
+libnet_build_ipv4(...);
+libnet_build_ethernet(...);
+libnet_write();
+
+
+
+
+| Feature               | **libpcap**          | **libnet**                                 |
+| --------------------- | -------------------- | ------------------------------------------ |
+| Primary purpose       | Capture              | Craft + Inject                             |
+| Inject support        | Basic                | Full packet injection stack                |
+| Build Ethernet header | ❌ No                 | ✔ Yes                                      |
+| Build IP header       | ❌ No                 | ✔ Yes                                      |
+| Build UDP/TCP         | ❌ No                 | ✔ Yes                                      |
+| Checksums             | ❌ You must calculate | ✔ Auto generated                           |
+| L2 injection          | ✔ Yes                | ✔ Yes                                      |
+| L3 injection          | ❌ No                 | ✔ Yes                                      |
+| Header stacking       | ❌ No                 | ✔ Yes                                      |
+| OS portability        | Very good            | Very good                                  |
+| API difficulty        | Easy                 | Moderate                                   |
+| Used by modern tools  | Capture tools        | Packet generators, scanners, ARP poisoners |
+
+
+
+
+
+
+
+🛠 Which should you use for packet injection?
+Use libnet if you want:
+
+✔ L2 crafting (Ethernet, ARP, VLAN, STP…)
+✔ L3 crafting (IP, ICMP, TCP, UDP)
+✔ auto checksums
+✔ header stacking
+✔ simplest injection API
+✔ portability
+✔ safe built‑in structures
+
+Use libpcap only if:
+
+✔ You already have the full frame built manually
+✔ You want to send raw bytes
+✔ You do not need header construction
+✔ You do not need checksums
+
+RAW conclusion:
+
+👉 libpcap is only a sender, libnet is a packet builder + sender.
+
+This is why professional packet‑generation tools use libnet or PF_PACKET instead of libpcap.
+
+
+
+
+
+🧰 What modern tools use which library?
+Tools using libpcap (capture):
+
+tcpdump
+
+Wireshark
+
+Snort (capture engine)
+
+Suricata (capture on non-AF_PACKET)
+
+Zeek/Bro
+
+Nmap (for sniffing only)
+
+Tools using libnet (injection):
+
+Hping3 → uses libnet to build custom TCP/IP packets
+
+Nemesis → classic packet generator, built on libnet
+
+dsniff/arpspoof → uses libnet for ARP poisoning
+
+yersinia → L2 attack tool
+
+Many custom academic/security research tools
+
+Tools using PF_PACKET directly (Linux only):
+
+Scapy (Python raw crafting framework)
+
+Suricata (modern)
+
+Soft‑switches and IDS/IPS engines
+
+Modern packet injection exploits/tools
+
+
+
+
+✔ A raw socket cannot capture incoming UDP/TCP
+
+Raw sockets only send full IP packets; they do not receive incoming transport packets in most systems.
+
+Therefore, libpcap is necessary to read the raw layer-2 frames, including checksums
+
+
+
+
