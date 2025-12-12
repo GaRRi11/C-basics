@@ -1,0 +1,25 @@
+Linux-specific performance options.
+
+1. UDP_CORK
+
+Batch UDP packets.
+
+Real-life:
+
+High-throughput video delivery
+
+Reduce overhead for small packets
+
+Streaming servers (LAN/WAN)
+
+2. UDP_GRO
+
+Enable hardware offload.
+
+Real-life:
+
+10Gb/40Gb/100Gb NICs
+
+Packet capture systems
+
+Datacenter LANs
