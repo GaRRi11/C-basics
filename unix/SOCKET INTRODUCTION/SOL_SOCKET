@@ -1,0 +1,187 @@
+
+
+✅ SOL_SOCKET (Generic Options)
+
+✔ Applies to ALL socket types (TCP/UDP/raw)
+✔ Level: SOL_SOCKET
+
+1. SO_REUSEADDR
+
+Type: int • get/set
+Real-life scenarios:
+
+Restarting a server without waiting for TIME_WAIT
+
+Development (frequent restarts)
+
+LAN or WAN (doesn't matter)
+
+Example
+
+int yes = 1;
+setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+
+2. SO_REUSEPORT
+
+Type: int • get/set
+Real-life scenarios:
+
+Multi-worker servers (NGINX, DNS, QUIC)
+
+High-performance per-core load balancing
+
+Used in LAN + WAN
+
+Example
+
+int yes = 1;
+setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof(yes));
+
+3. SO_KEEPALIVE
+
+Type: int • get/set
+Real-life scenarios:
+
+Detect dead TCP connections (SSH, MQTT, mobile apps)
+
+Connections over unreliable WiFi/LAN
+
+Server-client long-lived connections
+
+4. SO_BROADCAST
+
+Type: int • get/set
+Real-life scenarios:
+
+LAN only (broadcast does not cross routers)
+
+Device discovery (printers, smart TVs, IoT)
+
+Game LAN lobby discovery
+
+DHCP client broadcasts
+
+Example
+
+int yes = 1;
+setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &yes, sizeof(yes));
+
+5. SO_DEBUG
+
+Type: int • get/set
+Real-life scenarios:
+
+Very rarely used, legacy debugging
+
+Kernel tracing of socket activity (developer diagnostics only)
+
+6. SO_DONTROUTE
+
+Type: int • get/set
+Real-life scenarios:
+
+Send packets only to directly connected LAN, bypass routing
+
+Used for debugging routing issues
+
+Rare in production
+
+7. SO_ERROR
+
+Type: int • get only
+Real-life scenarios:
+
+Check asynchronous connect() completion
+
+Detect connection failure states
+
+Socket-level troubleshooting
+
+Example
+
+int err;
+socklen_t len = sizeof(err);
+getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &len);
+
+8. SO_LINGER
+
+Type: struct linger • get/set
+
+Real-life scenarios:
+
+Force TCP immediate RST to quickly close
+
+Ensure all data is delivered before close()
+
+Useful for financial trading systems, VoIP, strict protocols
+
+Example
+
+struct linger ln = {1, 5}; // wait 5 sec
+setsockopt(fd, SOL_SOCKET, SO_LINGER, &ln, sizeof(ln));
+
+9. SO_OOBINLINE
+
+Type: int • get/set
+Real-life scenarios:
+
+Legacy TCP out-of-band data (rare)
+
+Not used in modern systems
+
+10. SO_RCVBUF / SO_SNDBUF
+
+Type: int • get/set
+
+Real-life scenarios:
+
+Increase buffers for high-throughput transfers (VPN, FTP)
+
+Decrease for low-latency apps (games, VoIP)
+
+Common in both LAN and WAN
+
+11. SO_RCVLOWAT / SO_SNDLOWAT
+
+Type: int • get/set
+Real-life scenarios:
+
+Rarely used
+
+Control minimum bytes before recv() returns
+
+Used for very specific real-time protocols
+
+12. SO_RCVTIMEO / SO_SNDTIMEO
+
+Type: struct timeval • get/set
+
+Real-life scenarios:
+
+recv() timeout for UDP-based protocols
+
+Real-time systems with strict deadlines
+
+Avoid blocking indefinitely
+
+13. SO_TYPE
+
+Type: int • get only
+
+Real-life scenarios:
+
+Libraries verifying socket type (TCP/UDP)
+
+Debugging
+
+Never needed in normal applications
+
+14. SO_USELOOPBACK
+
+Type: int • get/set
+
+Real-life scenarios:
+
+Rare, used for routing sockets
+
+Developer/testing only
