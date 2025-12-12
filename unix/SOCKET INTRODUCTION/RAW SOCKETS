@@ -1,0 +1,560 @@
+
+RAW SOCKETS
+
+
+raw sockets enable read and write packets under TCP/UDP layer, packets of ICMP, ICMPv6, IGMP packets. normal sockets does not allow it.
+
+raw sockets enable to directly send and receive:
+
+ICMPv4
+
+IGMPv4
+
+ICMPv6
+
+
+
+
+IPv4 header has protocol field which tells what protocol packet carries 
+
+TCP = 6, UDP = 17, ICMP = 1, IGMP = 2
+
+normal kernels only allow this protocols not others. but there are other protocols for example protocol = 89, (OSPF) so by writing program which uses raw sockets to read and send OSPF packets we now can use OSPF protocol, we could not it with normal kernel.
+
+
+
+
+normally kernel handles building IP HEADER but by using raw sockets + IP_HDRINCL, we can craft our own IP HEADER with full byte control. so we can build custom IPv4 packets, UDP packets, TCP packets.
+
+raw sockets also give ability to inspect full packet also its IP HEADER, not only the payload like its as default.
+
+in 802.11 raw sockets used to craft custom deauth packets, auth req packets, evil twin, mac spoof, handshake capture, fragattacks, 
+
+
+packets which can be crafted with RAW SOCKETS:
+
+✅ A. ICMP (IPv4 + IPv6)
+
+Raw sockets allow crafting:
+
+ICMPv4
+
+Echo Request / Reply (ping)
+
+Time Exceeded
+
+Destination Unreachable
+
+Redirect
+
+Timestamp Request/Reply
+
+Router Solicitation/Advertisement
+
+Source Quench (obsolete but still possible)
+
+Parameter Problem
+
+ICMPv6
+
+Echo Request / Reply
+
+Neighbor Solicitation / Advertisement
+
+Router Solicitation / Advertisement
+
+Redirect
+
+Packet Too Big
+
+Time Exceeded
+
+Multicast Listener Discovery (MLD) messages
+
+✅ B. IGMP (IPv4 Multicast Management)
+
+Raw sockets allow crafting:
+
+Membership Query
+
+Membership Report (v1, v2, v3)
+
+Leave Group
+
+Source-specific multicast reports (IGMPv3)
+
+✅ C. Any IPv4 or IPv6 Packet With a Custom Protocol Number
+
+Raw sockets let you craft IP packets with any protocol number, for example:
+
+Common examples
+
+OSPF (Protocol 89)
+
+GRE (47)
+
+ESP (50) — IPsec
+
+AH (51) — IPsec
+
+SCTP (132)
+
+PIM (Protocol 103)
+
+VRRP (112)
+
+EIGRP (88)
+
+CARP (112, modified)
+
+L2TP (115)
+
+✔ basically any protocol listed in IANA’s Protocol Numbers registry.
+✅ D. Custom IPv4 Headers with IP_HDRINCL
+
+Using raw sockets + IP_HDRINCL, you can craft:
+
+Custom IPv4 packets
+
+Custom UDP packets (manually create UDP + IP header)
+
+Custom TCP packets (manually create TCP + IP header)
+
+This allows:
+
+SYN flood test packets
+
+Packets with fake source IPs (spoofing for research)
+
+Custom TTL or fragmentation behavior
+
+Packet injection for scanning or traceroute-style tools
+
+
+
+
+
+how to create RAW SOCKET 
+
+int sockfd;
+sockfd = socket(AF_INET, SOCK_RAW, protocol);
+
+
+AF_INET → IPv4
+
+SOCK_RAW → creates a raw socket
+
+protocol → IP protocol number (e.g., IPPROTO_ICMP, IPPROTO_IGMP, etc.)
+
+
+only root can create RAW SOCKET 
+
+
+
+
+
+IP_HDRINCL option - specifies who creates IPv4 header me or kernel.
+
+const int on = 1;
+setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL, &on, sizeof(on));
+
+
+its on, must be handled by me.
+
+
+
+bind()
+
+Unlike TCP/UDP, bind() only sets the local IP address. There is no port for raw sockets. If you call bind → the source IP address is forced to what you specify. If you don’t call bind → the kernel automatically uses the primary address of the outgoing interface.
+
+
+
+connect()
+
+Again, raw sockets have no ports, so connect only sets the destination IP address. You can call write() or send() No need to supply destination address each time You don’t need sendto() because the foreign address is already known.
+
+useful when:
+
+pinging repeatedly
+
+traceroute jumps
+
+sending repeated OSPF packets
+
+testing ICMP or custom protocol communication
+
+
+
+
+
+
+
+
+RAW SOCKET OUTPUT
+
+Raw socket output is mainly about how you craft packets.
+
+raw socket output heavily depends on whether IP_HDRINCL is ON or OFF. because this tells who constructs the IP HEADER me or kernel.
+
+raw socket output is sent same way as normal sockets.
+
+sendto() → send with destination address
+
+sendmsg() → advanced sending with control data
+
+write(), writev(), or send() only if the socket is connected (because connect sets a fixed destination IP)
+
+
+
+
+
+
+
+
+
+if IP_HDRINCL = OFF kernel builds IP HEADER means:
+
+✔ Data passed to sendto() begins after the IP header
+
+Kernel sets:
+
+Source IP (unless bind was used)
+
+Destination IP (from sendto or connect)
+
+IPv4 header checksum
+
+Identification field
+
+Flags, Fragment offset (as needed)
+
+TTL and TOS (unless modified by socket options)
+
+Protocol field → matches 3rd argument to socket()
+
+
+
+You only provide:
+
+ICMP payload
+
+IGMP payload
+
+Custom protocol payload
+
+
+
+
+
+
+
+if IP_HDRINCL = ON user builds IP HEADER
+
+✔ Data passed to sendto() starts at the first byte of your IP header
+
+You must construct:
+
+Full IPv4 header
+
+All header fields
+
+All payload data
+
+All upper-layer checksums (ICMP, UDP, TCP, etc.)
+
+Kernel still helps with a few fields
+
+The kernel will:
+
+Set Identification field if you set it to 0
+
+Always compute the IPv4 header checksum
+
+Possibly handle IP options (depends on OS)
+
+✔ You must include the size of the IP header in your write length
+
+✔ Kernel still fragments packets that exceed the MTU
+
+IPv4 checksum - calculated and set by kernel always.
+
+but there are some fields, if value is set manually kernel will not touch it:
+
+IPv4 Identification field (ip_id) - if non zero value set, kernel will not touch it.
+
+
+
+
+
+
+
+
+in case of IPv6 there is no any equivalent for IP_HDRINCL
+
+You cannot write a complete IPv6 header via a raw socket.
+
+✔ If you absolutely must craft full IPv6 packets
+
+→ must use datalink access (Chapter 29), not raw sockets.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+RAW SOCKET INPUT
+
+To receive EVERY packet on a LAN (including: TCP, UDP, ARP, DHCP, IGMP, ICMP, STP, IPv6 ND), you must drop down to datalink layer.
+
+The kernel gives a copy of the received packet to the raw socket’s receive queue.
+
+kernel just gives me copyes of what received but still handles and process packets himself. so Raw sockets can ONLY observe packets. You cannot stop kernel handling with raw sockets. You must use datalink layer capture + dropping. 
+
+If you want your program, not the kernel, to handle packets, you must use:
+
+AF_PACKET + eBPF/XDP (Linux only)
+
+receive full Ethernet frames
+
+drop them before the kernel sees them
+
+pass only selected packets to user space
+
+let your C code handle everything manually
+
+This is EXACTLY what firewalls, IDS/IPS, DPDK-based apps, and custom routers do.
+
+How to drop packets before the kernel:
+
+Attach an eBPF/XDP program to a NIC:
+
+XDP_DROP         → kernel never sees the packet  
+XDP_PASS         → allow kernel to process  
+XDP_REDIRECT     → redirect to user mode or another interface
+
+
+Your C program then handles the packets at L2 or L3.
+
+
+i can drop them so kernel will not touch it then i will process them inspect them and send respond for them and kernel will not distract me.
+
+
+The kernel does NOT pass every packet to raw sockets.
+
+✔ ICMP, IGMP, unknown protocols → delivered
+
+❌ TCP and UDP → NOT delivered
+
+Because TCP and UDP have dedicated protocol handlers inside the kernel.
+
+
+
+
+TCP/UDP
+
+You cannot capture incoming TCP or UDP packets using raw sockets.
+
+TCP/UDP belong to their own protocol handlers in the kernel (TCP stack, UDP stack).The kernel directly passes them to the TCP/UDP socket that owns them. TCP/UDP packets, you must read packets at the datalink layer
+
+
+
+ICMP
+
+Most ICMPv4 packets ARE passed to raw sockets, after the kernel handles them. 
+
+BUT three ICMP messages are NOT passed:
+
+Echo Request
+
+Timestamp Request
+
+Address Mask Request
+
+kernel responds them automatically. 	
+
+
+
+IGMP
+
+All IGMP packets are passed to raw sockets after kernel processing.
+
+
+
+UNKNOWN PROTOCOL
+
+If the kernel sees an IPv4 packet with an unknown protocol number, it always delivers it to raw sockets.
+
+
+
+Fragmented packets
+
+If a datagram is fragmented:
+
+raw socket gets nothing
+
+until ALL fragments are reassembled
+
+Only the final, reassembled packet is delivered.
+
+Raw sockets operate at the IP layer
+
+
+
+
+When does a raw socket receive the packet?
+
+Every raw socket is checked. A packet is delivered only if ALL the following match:
+
+✔️ Match 1: Protocol filter
+
+If raw socket was created with:
+
+socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+
+
+Then the incoming packet must have:
+
+IP header protocol = 1 (ICMP)
+
+✔️ Match 2: Local (bind) filter
+
+If your raw socket called:
+
+bind(sockfd, "192.168.1.10", ...)
+
+
+Then packet must have:
+
+destination IP = 192.168.1.10
+
+✔️ Match 3: Foreign (connect) filter
+
+If raw socket called:
+
+connect(sockfd, "8.8.8.8", ...)
+
+
+Then incoming packet must have:
+
+source IP = 8.8.8.8
+
+🟡 If NO filters — socket gets everything
+
+If:
+
+protocol = 0 (wildcard)
+
+no bind()
+
+no connect()
+
+Then the raw socket receives every raw IP packet allowed by kernel rules.
+
+
+
+📦 What exactly is delivered to the application?
+
+IPv4 raw sockets:
+
+You get:
+
+Entire IPv4 header
+
+Entire payload
+
+IPv6 raw sockets:
+
+You do NOT receive the IPv6 header.
+
+You only get:
+
+the payload after IPv6 header + extension headers
+
+This is a major design difference.
+
+Why?
+
+Because IPv6 APIs avoid exposing full headers except through ancillary data.
+
+
+
+
+🧰 ICMPv6 Filtering
+
+Since ICMPv6 handles:
+
+Router solicitation/advertisement
+
+Neighbor discovery (ARP equivalent)
+
+Multicast listener discovery (IGMP equivalent)
+
+Error messages
+
+→ a raw ICMPv6 socket would receive a huge amount of traffic.
+
+So IPv6 provides filters via struct icmp6_filter.
+
+You can:
+
+allow all
+
+block all
+
+allow specific types
+
+block specific types
+
+Example: only allow Router Advertisements:
+
+struct icmp6_filter myfilt;
+ICMP6_FILTER_SETBLOCKALL(&myfilt);
+ICMP6_FILTER_SETPASS(ND_ROUTER_ADVERT, &myfilt);
+
+setsockopt(fd, IPPROTO_ICMPV6, ICMP6_FILTER, &myfilt, sizeof(myfilt));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+PING
+
+
+PING uses raw sockets NOT DATALINK ITS L3
+
+Ping needs to construct ICMP messages manually → this requires raw socket
+
+Raw IP socket still gives you access to IP header + ICMP header
+
+No need for Ethernet header
+
