@@ -650,7 +650,7 @@ int main() {
 (tcp_flags >> i) & 1 → extract the i-th bit for printing
 
 
-
+<pre>
 
 #include <stdio.h>   // for printf()
 #include <stdint.h>  // for uint8_t (8-bit unsigned integer)
@@ -707,7 +707,7 @@ int main() {
 
 
 
-
+</pre>
 
 
 
