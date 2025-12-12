@@ -1,0 +1,60 @@
+
+Level: IPPROTO_TCP
+
+1. TCP_NODELAY
+
+Type: int • get/set
+Disable Nagle.
+
+Real-life:
+
+Gaming
+
+Financial trading
+
+HTTP/1.1 pipelining
+
+VoIP signaling
+
+LAN or WAN
+
+2. TCP_MAXSEG
+
+Type: int • get/set
+Control MSS.
+
+Real-life:
+
+VPN tunneling
+
+Avoid fragmentation
+
+Custom TCP stacks
+
+3. Keepalive tuning
+
+TCP_KEEPIDLE
+
+TCP_KEEPINTVL
+
+TCP_KEEPCNT
+
+Real-life:
+
+Detect dead TCP peers quickly
+
+Mobile networks
+
+Server keepalive policies
+
+4. TCP_QUICKACK
+
+Disable delayed ACKs temporarily.
+
+Real-life:
+
+Low-latency request/response
+
+Database connections
+
+LAN messaging servers
